@@ -39,18 +39,14 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final block =
-        context.watch<RoomBlockProvider>().getById(widget.blockId);
+    final block = context.watch<RoomBlockProvider>().getById(widget.blockId);
     if (block == null) return const SizedBox();
-    final rooms =
-        context.watch<RoomProvider>().roomsInBlock(widget.blockId);
+    final rooms = context.watch<RoomProvider>().roomsInBlock(widget.blockId);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
-        title: _editMode
-            ? const Text('Chỉnh sửa dãy trọ')
-            : Text(block.name),
+        title: _editMode ? const Text('Chỉnh sửa dãy trọ') : Text(block.name),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -139,8 +135,7 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _StatChip(
-                              label: '${rooms.length}',
-                              desc: 'Tổng phòng'),
+                              label: '${rooms.length}', desc: 'Tổng phòng'),
                           const SizedBox(width: 20),
                           _StatChip(
                               label:
@@ -171,8 +166,7 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
                 TextButton.icon(
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Thêm phòng'),
-                  onPressed: () =>
-                      _showAddRoomsSheet(context, widget.blockId),
+                  onPressed: () => _showAddRoomsSheet(context, widget.blockId),
                 ),
               ],
             ),
@@ -201,8 +195,7 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
     final ok = await showConfirmSheet<bool>(
       context,
       title: 'Xác nhận thay đổi',
-      subtitle:
-          'Cập nhật thông tin dãy trọ "${_nameCtrl.text}"?',
+      subtitle: 'Cập nhật thông tin dãy trọ "${_nameCtrl.text}"?',
       confirmLabel: 'Xác nhận',
     );
     if (ok == true && mounted) {
@@ -230,8 +223,8 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Container(
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           padding: const EdgeInsets.all(24),
@@ -244,13 +237,11 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Thêm phòng hàng loạt',
-                  style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              const Text(
-                  'Hệ thống sẽ tự tạo phòng từ: B1-01, B1-02...',
-                  style: TextStyle(
-                      fontSize: 12, color: AppTheme.textSecondary)),
+              const Text('Hệ thống sẽ tự tạo phòng từ: B1-01, B1-02...',
+                  style:
+                      TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               const SizedBox(height: 20),
               TextField(
                 controller: prefixCtrl,
@@ -403,13 +394,11 @@ class _RoomTileState extends State<_RoomTile> {
                       children: [
                         Text(room.name,
                             style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14)),
+                                fontWeight: FontWeight.w700, fontSize: 14)),
                         if (room.tenantName != null)
                           Text(room.tenantName!,
                               style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textSecondary)),
+                                  fontSize: 12, color: AppTheme.textSecondary)),
                       ],
                     ),
                   ),
@@ -457,8 +446,7 @@ class _RoomTileState extends State<_RoomTile> {
           final ok = await showConfirmSheet<bool>(
             context,
             title: 'Xác nhận cho thuê',
-            subtitle:
-                'Xác nhận cho ${room.tenantName} vào phòng ${room.name}?',
+            subtitle: 'Xác nhận cho ${room.tenantName} vào phòng ${room.name}?',
             confirmLabel: 'Xác nhận cho vào',
           );
           if (ok == true && context.mounted) {
@@ -498,8 +486,7 @@ class _RoomTileState extends State<_RoomTile> {
           if (room.everRented) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                  content:
-                      Text('Phòng đã từng có người thuê, không thể xóa!')),
+                  content: Text('Phòng đã từng có người thuê, không thể xóa!')),
             );
             return;
           }
@@ -539,9 +526,7 @@ class _EmptyRoomExpanded extends StatelessWidget {
   final Duration remaining;
   final VoidCallback onGenCode;
   const _EmptyRoomExpanded(
-      {required this.room,
-      required this.remaining,
-      required this.onGenCode});
+      {required this.room, required this.remaining, required this.onGenCode});
 
   @override
   Widget build(BuildContext context) {
@@ -564,8 +549,7 @@ class _EmptyRoomExpanded extends StatelessWidget {
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () {
-                    Clipboard.setData(
-                        ClipboardData(text: room.joinCode!));
+                    Clipboard.setData(ClipboardData(text: room.joinCode!));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Đã sao chép mã!')),
                     );
@@ -576,8 +560,8 @@ class _EmptyRoomExpanded extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppTheme.primary.withOpacity(0.3)),
+                      border:
+                          Border.all(color: AppTheme.primary.withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -645,9 +629,7 @@ class _PendingRoomExpanded extends StatelessWidget {
   final VoidCallback onConfirm;
   final VoidCallback onReject;
   const _PendingRoomExpanded(
-      {required this.room,
-      required this.onConfirm,
-      required this.onReject});
+      {required this.room, required this.onConfirm, required this.onReject});
 
   @override
   Widget build(BuildContext context) {
@@ -657,8 +639,7 @@ class _PendingRoomExpanded extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.primary.withOpacity(0.04),
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: AppTheme.primary.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -713,9 +694,7 @@ class _InactiveRoomExpanded extends StatelessWidget {
   final VoidCallback onReactivate;
   final VoidCallback onDelete;
   const _InactiveRoomExpanded(
-      {required this.room,
-      required this.onReactivate,
-      required this.onDelete});
+      {required this.room, required this.onReactivate, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -771,9 +750,7 @@ class _StatChip extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.w800)),
-        Text(desc,
-            style:
-                const TextStyle(color: Colors.white70, fontSize: 11)),
+        Text(desc, style: const TextStyle(color: Colors.white70, fontSize: 11)),
       ],
     );
   }
