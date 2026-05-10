@@ -18,8 +18,8 @@ class DashboardUserScreen extends StatelessWidget {
     final user = context.read<AuthProvider>().currentUser!;
     final invPvd = context.watch<InvoiceProvider>();
     final roomPvd = context.watch<RoomProvider>();
-    final room = roomPvd.roomForTenant(user.id);
-    final invoices = invPvd.invoicesForTenant(user.id);
+    final room = roomPvd.roomForTenant(user.uid);
+    final invoices = invPvd.invoicesForTenant(user.uid);
     final unpaid = invoices
         .where((i) =>
             i.status == InvoiceStatus.waitingPayment ||
@@ -55,8 +55,8 @@ class DashboardUserScreen extends StatelessWidget {
                   children: [
                     Text(
                       'Xin chào, ${user.name.split(' ').last}! 👋',
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 13),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -72,10 +72,9 @@ class DashboardUserScreen extends StatelessWidget {
                 ),
               ),
             ),
-            title: const Text('Tổng quan',
-                style: TextStyle(color: Colors.white)),
+            title:
+                const Text('Tổng quan', style: TextStyle(color: Colors.white)),
           ),
-
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
@@ -124,8 +123,7 @@ class DashboardUserScreen extends StatelessWidget {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  InvoiceDetailScreen(invoice: inv),
+                              builder: (_) => InvoiceDetailScreen(invoice: inv),
                             ),
                           ),
                           child: _UnpaidCard(invoice: inv, fmt: fmt),
@@ -160,12 +158,9 @@ class DashboardUserScreen extends StatelessWidget {
     return List.generate(5, (i) {
       final m = DateTime(now.year, now.month - (4 - i));
       final inv = invoices.where((inv) =>
-          inv.createdAt.year == m.year &&
-          inv.createdAt.month == m.month);
-      final elec =
-          inv.fold<double>(0, (sum, i) => sum + i.elecTotal);
-      final water =
-          inv.fold<double>(0, (sum, i) => sum + i.waterTotal);
+          inv.createdAt.year == m.year && inv.createdAt.month == m.month);
+      final elec = inv.fold<double>(0, (sum, i) => sum + i.elecTotal);
+      final water = inv.fold<double>(0, (sum, i) => sum + i.waterTotal);
       return {'month': m.month.toDouble(), 'elec': elec, 'water': water};
     });
   }
@@ -219,8 +214,8 @@ class _StatCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppTheme.textSecondary)),
+              style:
+                  const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
           const SizedBox(height: 4),
           Text(value,
               style: const TextStyle(
@@ -232,12 +227,9 @@ class _StatCard extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  trend! >= 0
-                      ? Icons.trending_up
-                      : Icons.trending_down,
-                  color: trend! >= 0
-                      ? AppTheme.errorColor
-                      : AppTheme.successColor,
+                  trend! >= 0 ? Icons.trending_up : Icons.trending_down,
+                  color:
+                      trend! >= 0 ? AppTheme.errorColor : AppTheme.successColor,
                   size: 14,
                 ),
                 const SizedBox(width: 2),
@@ -284,8 +276,7 @@ class _UnpaidCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${invoice.blockName} - ${invoice.roomName}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700)),
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
                 StatusBadge.invoice(invoice.status),
               ],
             ),
@@ -297,8 +288,7 @@ class _UnpaidCard extends StatelessWidget {
                 color: AppTheme.errorColor,
                 fontSize: 15),
           ),
-          const Icon(Icons.chevron_right,
-              color: AppTheme.textHint),
+          const Icon(Icons.chevron_right, color: AppTheme.textHint),
         ],
       ),
     );
@@ -311,7 +301,20 @@ class _TotalChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final months = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
+    final months = [
+      'T1',
+      'T2',
+      'T3',
+      'T4',
+      'T5',
+      'T6',
+      'T7',
+      'T8',
+      'T9',
+      'T10',
+      'T11',
+      'T12'
+    ];
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -405,8 +408,7 @@ class _ElecWaterChart extends StatelessWidget {
           Row(
             children: [
               const Text('Điện & Nước',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 13)),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               const Spacer(),
               _Legend(color: AppTheme.elecColor, label: 'Điện'),
               const SizedBox(width: 12),
@@ -428,32 +430,30 @@ class _ElecWaterChart extends StatelessWidget {
                   ),
                 ),
                 titlesData: const FlTitlesData(
-                  bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
                 lineBarsData: [
                   LineChartBarData(
                     spots: data.asMap().entries.map((e) {
-                      return FlSpot(
-                          e.key.toDouble(), e.value['elec']!);
+                      return FlSpot(e.key.toDouble(), e.value['elec']!);
                     }).toList(),
                     isCurved: true,
                     color: AppTheme.elecColor,
                     barWidth: 3,
                     dotData: FlDotData(
-                      getDotPainter: (_, __, ___, ____) =>
-                          FlDotCirclePainter(
-                            radius: 4,
-                            color: Colors.white,
-                            strokeWidth: 2,
-                            strokeColor: AppTheme.elecColor,
-                          ),
+                      getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+                        radius: 4,
+                        color: Colors.white,
+                        strokeWidth: 2,
+                        strokeColor: AppTheme.elecColor,
+                      ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
@@ -462,20 +462,18 @@ class _ElecWaterChart extends StatelessWidget {
                   ),
                   LineChartBarData(
                     spots: data.asMap().entries.map((e) {
-                      return FlSpot(
-                          e.key.toDouble(), e.value['water']!);
+                      return FlSpot(e.key.toDouble(), e.value['water']!);
                     }).toList(),
                     isCurved: true,
                     color: AppTheme.waterColor,
                     barWidth: 3,
                     dotData: FlDotData(
-                      getDotPainter: (_, __, ___, ____) =>
-                          FlDotCirclePainter(
-                            radius: 4,
-                            color: Colors.white,
-                            strokeWidth: 2,
-                            strokeColor: AppTheme.waterColor,
-                          ),
+                      getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+                        radius: 4,
+                        color: Colors.white,
+                        strokeWidth: 2,
+                        strokeColor: AppTheme.waterColor,
+                      ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
@@ -504,14 +502,11 @@ class _Legend extends StatelessWidget {
         Container(
             width: 12,
             height: 12,
-            decoration:
-                BoxDecoration(color: color, shape: BoxShape.circle)),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
         Text(label,
             style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: color)),
+                fontSize: 11, fontWeight: FontWeight.w600, color: color)),
       ],
     );
   }

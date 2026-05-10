@@ -1,12 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 import '../models/user_model.dart';
+import '../services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   UserModel? _currentUser;
-  List<UserModel> _users = [];
   bool _loading = false;
   String? _error;
 
@@ -14,87 +11,38 @@ class AuthProvider extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
   bool get isLoggedIn => _currentUser != null;
+  bool get isOwner => _currentUser?.isOwner ?? false;
 
-  static const _usersKey = 'users_data';
-  static const _currentUserKey = 'current_user_id';
-
+  // ── Khởi tạo: lắng nghe Firebase Auth state ─────────────────────────────
   Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    final usersJson = prefs.getString(_usersKey);
-    if (usersJson != null) {
-      final list = jsonDecode(usersJson) as List;
-      _users = list.map((e) => UserModel.fromMap(e)).toList();
-    } else {
-      // Seed demo data
-      _users = [
-        UserModel(
-          id: 'mgr001',
-          name: 'Nguyễn Văn Hùng',
-          email: 'manager@demo.com',
-          phone: '0901234567',
-          password: 'Manager@123',
-          role: UserRole.manager,
-        ),
-        UserModel(
-          id: 'usr001',
-          name: 'Trần Thị Lan',
-          email: 'user@demo.com',
-          phone: '0987654321',
-          password: 'User@123',
-          role: UserRole.user,
-        ),
-      ];
-      await _saveUsers();
-    }
-
-    // Removed auto-login logic so the app always starts at the login screen
-    _currentUser = null;
+    _currentUser = await AuthService.instance.currentUser;
     notifyListeners();
+
+    // Lắng nghe thay đổi auth state (logout, token hết hạn...)
+    AuthService.instance.authStateChanges.listen((user) {
+      _currentUser = user;
+      notifyListeners();
+    });
   }
 
+  // ── ĐĂNG NHẬP ────────────────────────────────────────────────────────────
   Future<String?> login(String email, String password) async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 600));
+    _setLoading(true);
+    final result = await AuthService.instance.login(
+      email: email,
+      password: password,
+    );
+    _setLoading(false);
 
-    if (email.isEmpty || password.isEmpty) {
-      _error = 'Vui lòng nhập đầy đủ thông tin';
-      _loading = false;
+    if (result.isSuccess) {
+      _currentUser = result.user;
       notifyListeners();
-      return _error;
+      return null;
     }
-
-    if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w]{2,}$').hasMatch(email)) {
-      _error = 'Email không đúng định dạng';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-
-    final user = _users.where((u) => u.email == email).firstOrNull;
-    if (user == null) {
-      _error = 'Email không tồn tại. Hãy đăng ký hoặc thử lại';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-
-    if (user.password != password) {
-      _error = 'Mật khẩu không đúng';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-
-    _currentUser = user;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_currentUserKey, user.id);
-    _loading = false;
-    notifyListeners();
-    return null;
+    return result.error;
   }
 
+  // ── ĐĂNG KÝ ──────────────────────────────────────────────────────────────
   Future<String?> register({
     required String name,
     required String email,
@@ -102,133 +50,79 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     required UserRole role,
   }) async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    if (name.trim().length < 2) {
-      _error = 'Họ tên không hợp lệ';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-    if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w]{2,}$').hasMatch(email)) {
-      _error = 'Email không đúng định dạng';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-    if (_users.any((u) => u.email == email)) {
-      _error = 'Email đã được sử dụng. Hãy đăng nhập hoặc thử email khác';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-    if (!RegExp(r'^(0[3|5|7|8|9])[0-9]{8}$').hasMatch(phone)) {
-      _error = 'Số điện thoại không đúng chuẩn (VD: 09xxxxxxxx)';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-    if (!RegExp(r'^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%^&*]).{8,}$')
-        .hasMatch(password)) {
-      _error =
-          'Mật khẩu phải ≥8 ký tự, có chữ hoa, số và ký tự đặc biệt (!@#\$...)';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-
-    final newUser = UserModel(
-      id: const Uuid().v4(),
-      name: name.trim(),
+    _setLoading(true);
+    final result = await AuthService.instance.register(
+      name: name,
       email: email,
       phone: phone,
       password: password,
       role: role,
     );
-    _users.add(newUser);
-    await _saveUsers();
-    _currentUser = newUser;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_currentUserKey, newUser.id);
-    _loading = false;
-    notifyListeners();
-    return null;
+    _setLoading(false);
+
+    if (result.isSuccess) {
+      _currentUser = result.user;
+      notifyListeners();
+      return null;
+    }
+    return result.error;
   }
 
+  // ── ĐĂNG XUẤT ────────────────────────────────────────────────────────────
+  Future<void> logout() async {
+    await AuthService.instance.logout();
+    _currentUser = null;
+    notifyListeners();
+  }
+
+  // ── QUÊN MẬT KHẨU ────────────────────────────────────────────────────────
   Future<String?> forgotPassword(String email) async {
-    _loading = true;
-    notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w]{2,}$').hasMatch(email)) {
-      _error = 'Email không đúng định dạng';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-    final exists = _users.any((u) => u.email == email);
-    if (!exists) {
-      _error = 'Email không tồn tại trong hệ thống';
-      _loading = false;
-      notifyListeners();
-      return _error;
-    }
-    _loading = false;
-    notifyListeners();
-    return null;
+    _setLoading(true);
+    final result = await AuthService.instance.forgotPassword(email);
+    _setLoading(false);
+    return result.isSuccess ? null : result.error;
   }
 
-  Future<void> updateProfile({
+  // ── ĐỔI MẬT KHẨU ─────────────────────────────────────────────────────────
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _setLoading(true);
+    final result = await AuthService.instance.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+    _setLoading(false);
+    return result.isSuccess ? null : result.error;
+  }
+
+  // ── CẬP NHẬT PROFILE ─────────────────────────────────────────────────────
+  Future<String?> updateProfile({
     String? name,
     String? phone,
-    String? avatarPath,
+    String? avatar,
   }) async {
-    if (_currentUser == null) return;
-    _currentUser = _currentUser!.copyWith(
+    if (_currentUser == null) return 'Chưa đăng nhập';
+    _setLoading(true);
+    final result = await AuthService.instance.updateProfile(
+      uid: _currentUser!.uid,
       name: name,
       phone: phone,
-      avatarPath: avatarPath,
+      avatar: avatar,
     );
-    final idx = _users.indexWhere((u) => u.id == _currentUser!.id);
-    if (idx != -1) _users[idx] = _currentUser!;
-    await _saveUsers();
-    notifyListeners();
-  }
+    _setLoading(false);
 
-  Future<String?> changePassword(String oldPass, String newPass) async {
-    if (_currentUser == null) return 'Chưa đăng nhập';
-    if (_currentUser!.password != oldPass) return 'Mật khẩu cũ không đúng';
-    if (!RegExp(r'^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%^&*]).{8,}$')
-        .hasMatch(newPass)) {
-      return 'Mật khẩu mới không đạt yêu cầu bảo mật';
+    if (result.isSuccess) {
+      _currentUser = result.user;
+      notifyListeners();
+      return null;
     }
-    _currentUser = _currentUser!.copyWith(password: newPass);
-    final idx = _users.indexWhere((u) => u.id == _currentUser!.id);
-    if (idx != -1) _users[idx] = _currentUser!;
-    await _saveUsers();
-    notifyListeners();
-    return null;
+    return result.error;
   }
 
-  Future<void> logout() async {
-    _currentUser = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_currentUserKey);
+  void _setLoading(bool val) {
+    _loading = val;
     notifyListeners();
   }
-
-  Future<void> _saveUsers() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        _usersKey, jsonEncode(_users.map((u) => u.toMap()).toList()));
-  }
-
-  // Expose user list for room provider (to get tenant names)
-  UserModel? getUserById(String id) =>
-      _users.where((u) => u.id == id).firstOrNull;
-
-  List<UserModel> get allUsers => List.unmodifiable(_users);
 }

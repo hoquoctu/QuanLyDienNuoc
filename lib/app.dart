@@ -109,7 +109,7 @@ class _AppRootState extends State<_AppRoot> {
 
     final user = context.watch<AuthProvider>().currentUser;
     if (user == null) return const LoginScreen();
-    if (user.role == UserRole.manager) return const HomeManagerScreen();
+    if (user.role == UserRole.owner) return const HomeManagerScreen();
     return const HomeUserScreen();
   }
 }

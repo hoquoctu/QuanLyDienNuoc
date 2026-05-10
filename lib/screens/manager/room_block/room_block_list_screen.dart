@@ -14,7 +14,7 @@ class RoomBlockListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().currentUser!;
     final blockProvider = context.watch<RoomBlockProvider>();
-    final blocks = blockProvider.blocksForManager(user.id);
+    final blocks = blockProvider.blocksForManager(user.uid);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -24,21 +24,20 @@ class RoomBlockListScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
             color: AppTheme.primary,
-            onPressed: () => _showAddBlockSheet(context, user.id),
+            onPressed: () => _showAddBlockSheet(context, user.uid),
           ),
         ],
       ),
       body: blocks.isEmpty
-          ? _buildEmpty(context, user.id)
+          ? _buildEmpty(context, user.uid)
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: blocks.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, i) {
                 final block = blocks[i];
-                final rooms = context
-                    .watch<RoomProvider>()
-                    .roomsInBlock(block.id);
+                final rooms =
+                    context.watch<RoomProvider>().roomsInBlock(block.id);
                 final rented =
                     rooms.where((r) => r.status.name == 'rented').length;
                 return _BlockCard(
@@ -49,12 +48,11 @@ class RoomBlockListScreen extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          RoomBlockDetailScreen(blockId: block.id),
+                      builder: (_) => RoomBlockDetailScreen(blockId: block.id),
                     ),
                   ),
-                  onDelete: () => _confirmDelete(context, block.id,
-                      block.name, rooms.any((r) => r.status.name == 'rented')),
+                  onDelete: () => _confirmDelete(context, block.id, block.name,
+                      rooms.any((r) => r.status.name == 'rented')),
                 );
               },
             ),
@@ -84,8 +82,7 @@ class RoomBlockListScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Thêm dãy trọ mới',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 20),
               TextField(
                 controller: nameCtrl,
@@ -106,9 +103,7 @@ class RoomBlockListScreen extends StatelessWidget {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
-                  final err = await context
-                      .read<RoomBlockProvider>()
-                      .addBlock(
+                  final err = await context.read<RoomBlockProvider>().addBlock(
                         managerId: managerId,
                         name: nameCtrl.text,
                         address: addrCtrl.text,
@@ -255,8 +250,7 @@ class _BlockCard extends StatelessWidget {
                   color: AppTheme.errorColor, size: 20),
               onPressed: onDelete,
             ),
-            const Icon(Icons.chevron_right,
-                color: AppTheme.textHint),
+            const Icon(Icons.chevron_right, color: AppTheme.textHint),
           ],
         ),
       ),

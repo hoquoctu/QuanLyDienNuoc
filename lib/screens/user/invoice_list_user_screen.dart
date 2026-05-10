@@ -15,7 +15,7 @@ class InvoiceListUserScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().currentUser!;
     final invoices =
-        context.watch<InvoiceProvider>().invoicesForTenant(user.id);
+        context.watch<InvoiceProvider>().invoicesForTenant(user.uid);
 
     final unpaid = invoices
         .where((i) =>
@@ -99,9 +99,7 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 6),
         Text(label,
             style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: color)),
+                fontWeight: FontWeight.w700, fontSize: 14, color: color)),
         const SizedBox(width: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -111,9 +109,7 @@ class _SectionHeader extends StatelessWidget {
           ),
           child: Text('$count',
               style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: color)),
+                  fontSize: 11, fontWeight: FontWeight.w700, color: color)),
         ),
       ],
     );
@@ -159,12 +155,10 @@ class _InvoiceCard extends StatelessWidget {
                     children: [
                       Text(invoice.blockName,
                           style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14)),
+                              fontWeight: FontWeight.w700, fontSize: 14)),
                       Text('Phòng ${invoice.roomName}',
                           style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary)),
+                              fontSize: 12, color: AppTheme.textSecondary)),
                     ],
                   ),
                 ),
@@ -185,8 +179,7 @@ class _InvoiceCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text('${fmt.format(invoice.elecTotal)}đ',
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary)),
+                                fontSize: 12, color: AppTheme.textSecondary)),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -197,8 +190,7 @@ class _InvoiceCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text('${fmt.format(invoice.waterTotal)}đ',
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary)),
+                                fontSize: 12, color: AppTheme.textSecondary)),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -217,8 +209,7 @@ class _InvoiceCard extends StatelessWidget {
                           fontSize: 18,
                           color: AppTheme.textPrimary),
                     ),
-                    const Icon(Icons.chevron_right,
-                        color: AppTheme.textHint),
+                    const Icon(Icons.chevron_right, color: AppTheme.textHint),
                   ],
                 ),
               ],

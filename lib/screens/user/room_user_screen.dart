@@ -31,7 +31,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     final user = context.read<AuthProvider>().currentUser!;
     final err = await context
         .read<RoomProvider>()
-        .requestJoinRoom(_codeCtrl.text.trim(), user.id, user.name);
+        .requestJoinRoom(_codeCtrl.text.trim(), user.uid, user.name);
     setState(() {
       _joining = false;
       _err = err;
@@ -40,8 +40,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
       _codeCtrl.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-              '✅ Đã gửi yêu cầu! Chờ chủ trọ xác nhận.'),
+          content: Text('✅ Đã gửi yêu cầu! Chờ chủ trọ xác nhận.'),
           backgroundColor: AppTheme.successColor,
         ),
       );
@@ -51,7 +50,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().currentUser!;
-    final room = context.watch<RoomProvider>().roomForTenant(user.id);
+    final room = context.watch<RoomProvider>().roomForTenant(user.uid);
     final block = room != null
         ? context.read<RoomBlockProvider>().getById(room.blockId)
         : null;
@@ -92,8 +91,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
               const SizedBox(height: 16),
               Text(
                 block?.name ?? 'Dãy trọ',
-                style: const TextStyle(
-                    color: Colors.white70, fontSize: 13),
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               Text(
                 'Phòng ${room.name}',
@@ -105,8 +103,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
               if (block != null)
                 Text(
                   block.address,
-                  style: const TextStyle(
-                      color: Colors.white60, fontSize: 12),
+                  style: const TextStyle(color: Colors.white60, fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
             ],
@@ -141,7 +138,8 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                 _InfoTile(
                   icon: Icons.calendar_month_outlined,
                   label: 'Thuê từ ngày',
-                  value: '${room.tenantSince!.day}/${room.tenantSince!.month}/${room.tenantSince!.year}',
+                  value:
+                      '${room.tenantSince!.day}/${room.tenantSince!.month}/${room.tenantSince!.year}',
                   color: AppTheme.primary,
                 ),
               ],
@@ -156,19 +154,16 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
             decoration: BoxDecoration(
               color: AppTheme.primary.withOpacity(0.06),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                  color: AppTheme.primary.withOpacity(0.2)),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
             ),
             child: Row(children: const [
-              Icon(Icons.hourglass_empty,
-                  color: AppTheme.primary, size: 24),
+              Icon(Icons.hourglass_empty, color: AppTheme.primary, size: 24),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Yêu cầu của bạn đang chờ chủ trọ xác nhận...',
                   style: TextStyle(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w600),
+                      color: AppTheme.primary, fontWeight: FontWeight.w600),
                 ),
               ),
             ]),
@@ -216,8 +211,8 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
             labelText: 'Mã phòng trọ',
             hintText: 'VD: B101ABC123456',
             errorText: _err,
-            prefixIcon: const Icon(Icons.qr_code_scanner,
-                color: AppTheme.primary),
+            prefixIcon:
+                const Icon(Icons.qr_code_scanner, color: AppTheme.primary),
           ),
           onChanged: (_) => setState(() => _err = null),
         ),
@@ -243,8 +238,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
               Expanded(
                 child: Text(
                   'Mã phòng có hiệu lực trong 30 phút kể từ khi chủ trọ tạo. Hãy liên hệ chủ trọ để lấy mã.',
-                  style: TextStyle(
-                      fontSize: 12, color: AppTheme.warningColor),
+                  style: TextStyle(fontSize: 12, color: AppTheme.warningColor),
                 ),
               ),
             ],
@@ -282,12 +276,11 @@ class _InfoTile extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(label,
-              style: const TextStyle(
-                  color: AppTheme.textSecondary, fontSize: 13)),
+              style:
+                  const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
         ),
         Text(value,
-            style: const TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 14)),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
       ],
     );
   }

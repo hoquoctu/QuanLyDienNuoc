@@ -42,14 +42,11 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
   Widget build(BuildContext context) {
     final invoices = context.watch<InvoiceProvider>();
     final pendingCount = invoices.allInvoices
-        .where((i) => i.tenantId.isNotEmpty &&
+        .where((i) =>
+            i.tenantId.isNotEmpty &&
             i.status.name == 'pendingConfirm' &&
             invoices.allInvoices.any((inv) =>
-                inv.blockId ==
-                context
-                    .read<AuthProvider>()
-                    .currentUser!
-                    .id))
+                inv.blockId == context.read<AuthProvider>().currentUser!))
         .length;
 
     return Scaffold(
@@ -120,9 +117,8 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: active
-                                  ? AppTheme.primary
-                                  : AppTheme.textHint,
+                              color:
+                                  active ? AppTheme.primary : AppTheme.textHint,
                             ),
                           ),
                         ],

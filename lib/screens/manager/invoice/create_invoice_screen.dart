@@ -89,13 +89,13 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       currWater: currWater,
       imagePath: _imagePath,
     );
-    await context.read<RoomProvider>().updateLastReadings(
-        room.id, currElec, currWater);
+    await context
+        .read<RoomProvider>()
+        .updateLastReadings(room.id, currElec, currWater);
 
     setState(() {
       _submitting = false;
-      _successMsg =
-          'Đã tạo hóa đơn cho phòng ${room.name}!';
+      _successMsg = 'Đã tạo hóa đơn cho phòng ${room.name}!';
       _selectedRoomId = null;
       _currElecCtrl.clear();
       _currWaterCtrl.clear();
@@ -106,7 +106,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().currentUser!;
-    final blocks = context.read<RoomBlockProvider>().blocksForManager(user.id);
+    final blocks = context.read<RoomBlockProvider>().blocksForManager(user.uid);
     final invPvd = context.watch<InvoiceProvider>();
     final fmt = NumberFormat('#,###', 'vi_VN');
 
@@ -120,8 +120,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           .toList();
     }
     if (_selectedRoomId != null) {
-      selectedRoom =
-          context.read<RoomProvider>().getById(_selectedRoomId!);
+      selectedRoom = context.read<RoomProvider>().getById(_selectedRoomId!);
     }
 
     return Scaffold(
@@ -141,8 +140,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.check_circle,
-                      color: AppTheme.successColor),
+                  const Icon(Icons.check_circle, color: AppTheme.successColor),
                   const SizedBox(width: 8),
                   Expanded(
                       child: Text(_successMsg!,
@@ -153,8 +151,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               ),
 
             // Step 1: Select block
-            _SectionLabel(
-                number: '1', label: 'Chọn dãy trọ'),
+            _SectionLabel(number: '1', label: 'Chọn dãy trọ'),
             const SizedBox(height: 8),
             if (blocks.length == 1)
               _SelectionCard(
@@ -162,8 +159,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                 title: blocks.first.name,
                 subtitle: blocks.first.address,
                 selected: true,
-                onTap: () =>
-                    setState(() => _selectedBlockId = blocks.first.id),
+                onTap: () => setState(() => _selectedBlockId = blocks.first.id),
               )
             else
               ...blocks.map((b) => Padding(
@@ -194,16 +190,13 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                       children: rooms.map((r) {
                         final selected = _selectedRoomId == r.id;
                         return GestureDetector(
-                          onTap: () =>
-                              setState(() => _selectedRoomId = r.id),
+                          onTap: () => setState(() => _selectedRoomId = r.id),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: selected
-                                  ? AppTheme.primary
-                                  : Colors.white,
+                              color: selected ? AppTheme.primary : Colors.white,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: selected
@@ -294,12 +287,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                                 color: AppTheme.textHint, size: 36),
                             SizedBox(height: 8),
                             Text('Chụp ảnh đồng hồ đo',
-                                style: TextStyle(
-                                    color: AppTheme.textSecondary)),
+                                style:
+                                    TextStyle(color: AppTheme.textSecondary)),
                             Text('(Không bắt buộc)',
                                 style: TextStyle(
-                                    color: AppTheme.textHint,
-                                    fontSize: 11)),
+                                    color: AppTheme.textHint, fontSize: 11)),
                           ],
                         ),
                 ),
@@ -388,8 +380,7 @@ class _SelectionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon,
-                color: selected ? AppTheme.primary : AppTheme.textHint),
+            Icon(icon, color: selected ? AppTheme.primary : AppTheme.textHint),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -445,8 +436,9 @@ class _ReadingInputState extends State<_ReadingInput> {
 
   void _update() {
     final v = double.tryParse(widget.controller.text);
-    setState(() => _calc =
-        v != null && v > widget.prevValue ? (v - widget.prevValue) * widget.unitPrice : null);
+    setState(() => _calc = v != null && v > widget.prevValue
+        ? (v - widget.prevValue) * widget.unitPrice
+        : null);
   }
 
   @override
@@ -495,8 +487,7 @@ class _ReadingInputState extends State<_ReadingInput> {
                     labelText: 'Chỉ số mới',
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          BorderSide(color: widget.color, width: 2),
+                      borderSide: BorderSide(color: widget.color, width: 2),
                     ),
                   ),
                 ),

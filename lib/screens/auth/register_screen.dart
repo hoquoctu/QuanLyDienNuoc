@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/screens/manager/home_manager_screen.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_text_field.dart';
+import '../user/home_user_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -38,12 +40,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passCtrl.text,
       role: _selectedRole,
     );
-    if (err != null && mounted) {
+
+    if (!mounted) return;
+
+    if (err != null) {
       setState(() => _err = err);
-      // Reset pass if password error
-      if (err.contains('Mật khẩu')) _passCtrl.clear();
+      if (err.contains('Mật khẩu') || err.contains('mật khẩu')) {
+        _passCtrl.clear();
+      }
       if (err.contains('điện thoại')) _phoneCtrl.clear();
+      return;
     }
+
+    // Điều hướng theo role sau khi đăng ký thành công
+    final user = auth.currentUser!;
+    final destination = user.role == UserRole.owner
+        ? const HomeManagerScreen()
+        : const HomeUserScreen();
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
+      (_) => false,
+    );
   }
 
   @override
@@ -77,8 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: 'Người thuê',
                     icon: Icons.person_outline,
                     selected: _selectedRole == UserRole.user,
-                    onTap: () =>
-                        setState(() => _selectedRole = UserRole.user),
+                    onTap: () => setState(() => _selectedRole = UserRole.user),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -86,9 +104,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: _RoleTile(
                     label: 'Chủ trọ',
                     icon: Icons.home_work_outlined,
-                    selected: _selectedRole == UserRole.manager,
-                    onTap: () =>
-                        setState(() => _selectedRole = UserRole.manager),
+                    selected: _selectedRole == UserRole.owner,
+                    onTap: () => setState(() => _selectedRole = UserRole.owner),
                   ),
                 ),
               ],
@@ -129,8 +146,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               prefixIcon: const Icon(Icons.lock_outline,
                   color: AppTheme.textHint, size: 20),
             ),
-
-            // Password hint
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -140,8 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               child: const Text(
                 '🔒 Mật khẩu phải có ≥8 ký tự, 1 chữ hoa, 1 số và 1 ký tự đặc biệt (!@#\$...)',
-                style: TextStyle(
-                    fontSize: 12, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
               ),
             ),
 
@@ -159,11 +173,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         color: AppTheme.errorColor, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        _err!,
-                        style: const TextStyle(
-                            color: AppTheme.errorColor, fontSize: 13),
-                      ),
+                      child: Text(_err!,
+                          style: const TextStyle(
+                              color: AppTheme.errorColor, fontSize: 13)),
                     ),
                   ],
                 ),
@@ -173,9 +185,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 28),
             auth.loading
                 ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: _register,
-                    child: const Text('Đăng ký'),
+                : SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _register,
+                      child: const Text('Đăng ký'),
+                    ),
                   ),
             const SizedBox(height: 16),
             Center(

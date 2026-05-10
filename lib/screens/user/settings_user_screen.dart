@@ -34,12 +34,9 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
 
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
-    final xfile =
-        await picker.pickImage(source: ImageSource.gallery);
+    final xfile = await picker.pickImage(source: ImageSource.gallery);
     if (xfile != null && mounted) {
-      await context
-          .read<AuthProvider>()
-          .updateProfile(avatarPath: xfile.path);
+      await context.read<AuthProvider>().updateProfile(avatar: xfile.path);
     }
   }
 
@@ -79,8 +76,7 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
               onPressed: _saveProfile,
               child: const Text('Lưu',
                   style: TextStyle(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w700)),
+                      color: AppTheme.primary, fontWeight: FontWeight.w700)),
             ),
         ],
       ),
@@ -259,8 +255,8 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
           child: Container(
             margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             padding: const EdgeInsets.all(24),
@@ -273,8 +269,8 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Đổi mật khẩu',
-                    style: TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w800)),
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 20),
                 CustomTextField(
                   label: 'Mật khẩu cũ',
@@ -291,15 +287,15 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
                   const SizedBox(height: 8),
                   Text(err!,
                       style: const TextStyle(
-                          color: AppTheme.errorColor,
-                          fontSize: 12)),
+                          color: AppTheme.errorColor, fontSize: 12)),
                 ],
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () async {
-                    final e = await context
-                        .read<AuthProvider>()
-                        .changePassword(oldCtrl.text, newCtrl.text);
+                    final e = await context.read<AuthProvider>().changePassword(
+                          currentPassword: oldCtrl.text,
+                          newPassword: newCtrl.text,
+                        );
                     if (e != null) {
                       setSheetState(() => err = e);
                     } else if (ctx.mounted) {
@@ -337,12 +333,11 @@ class _InfoRow extends StatelessWidget {
         Icon(icon, size: 18, color: AppTheme.textHint),
         const SizedBox(width: 10),
         Text(label,
-            style: const TextStyle(
-                color: AppTheme.textSecondary, fontSize: 13)),
+            style:
+                const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
         const Spacer(),
         Text(value,
-            style: const TextStyle(
-                fontWeight: FontWeight.w600, fontSize: 13)),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
       ],
     );
   }

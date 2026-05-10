@@ -106,8 +106,7 @@ class _LoginScreenState extends State<LoginScreen>
                 const SizedBox(height: 4),
                 const Text(
                   'Quản lý hóa đơn điện nước',
-                  style: TextStyle(
-                      fontSize: 14, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 40),
 
@@ -179,32 +178,6 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                   ],
-                ),
-
-                // Demo hint
-                Container(
-                  margin: const EdgeInsets.only(top: 16),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: const [
-                      Text('🔑 Tài khoản demo',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.primary,
-                              fontSize: 13)),
-                      SizedBox(height: 6),
-                      Text('Manager: manager@demo.com / Manager@123',
-                          style: TextStyle(
-                              fontSize: 12, color: AppTheme.textSecondary)),
-                      Text('User: user@demo.com / User@123',
-                          style: TextStyle(
-                              fontSize: 12, color: AppTheme.textSecondary)),
-                    ],
-                  ),
                 ),
               ],
             ),

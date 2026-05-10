@@ -1,58 +1,99 @@
-enum UserRole { manager, user }
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+//role: owner (chu tro) | user (nguoi thue)
+enum UserRole { owner, user }
 
 class UserModel {
-  final String id;
+  final String uid; // = Firebase Auth UID = Firestore document ID
   final String name;
   final String email;
   final String phone;
-  final String password;
   final UserRole role;
-  final String? avatarPath;
+  final String? avatar;
 
-  UserModel({
-    required this.id,
+  const UserModel({
+    required this.uid,
     required this.name,
     required this.email,
     required this.phone,
-    required this.password,
     required this.role,
-    this.avatarPath,
+    this.avatar,
   });
 
-  UserModel copyWith({
-    String? name,
-    String? phone,
-    String? password,
-    String? avatarPath,
-  }) {
+  // ── Factory từ Firestore doc ────────────────────────────────────────────
+  factory UserModel.fromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     return UserModel(
-      id: id,
-      name: name ?? this.name,
-      email: email,
-      phone: phone ?? this.phone,
-      password: password ?? this.password,
-      role: role,
-      avatarPath: avatarPath ?? this.avatarPath,
+      uid: doc.id,
+      name: data['name'] ?? '',
+      email: data['email'] ?? '',
+      phone: data['phone'] ?? '',
+      role: _roleFromString(data['role']),
+      avatar: data['avatar'],
     );
   }
 
+  // ── Factory từ Map thường (SharedPreferences / test) ───────────────────
+  factory UserModel.fromMap(Map<String, dynamic> m) => UserModel(
+        uid: m['uid'] ?? '',
+        name: m['name'] ?? '',
+        email: m['email'] ?? '',
+        phone: m['phone'] ?? '',
+        role: _roleFromString(m['role']),
+        avatar: m['avatar'],
+      );
+
+  // ── Serialize ───────────────────────────────────────────────────────────
   Map<String, dynamic> toMap() => {
-        'id': id,
+        'uid': uid,
         'name': name,
         'email': email,
         'phone': phone,
-        'password': password,
-        'role': role.name,
-        'avatarPath': avatarPath,
+        'role': role.name, // 'owner' | 'user'
+        'avatar': avatar,
       };
 
-  factory UserModel.fromMap(Map<String, dynamic> m) => UserModel(
-        id: m['id'],
-        name: m['name'],
-        email: m['email'],
-        phone: m['phone'],
-        password: m['password'],
-        role: m['role'] == 'manager' ? UserRole.manager : UserRole.user,
-        avatarPath: m['avatarPath'],
+  /// Dùng khi write lên Firestore (không lưu uid vào field, uid = doc ID)
+  Map<String, dynamic> toFirestore() => {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'role': role.name,
+        'avatar': avatar,
+      };
+
+  // ── CopyWith ────────────────────────────────────────────────────────────
+  UserModel copyWith({
+    String? name,
+    String? phone,
+    String? avatar,
+  }) =>
+      UserModel(
+        uid: uid,
+        name: name ?? this.name,
+        email: email,
+        phone: phone ?? this.phone,
+        role: role,
+        avatar: avatar ?? this.avatar,
       );
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  bool get isOwner => role == UserRole.owner;
+  bool get isUser => role == UserRole.user;
+
+  static UserRole _roleFromString(dynamic value) {
+    if (value == 'owner') return UserRole.owner;
+    return UserRole.user;
+  }
+
+  @override
+  String toString() =>
+      'UserModel(uid: $uid, name: $name, email: $email, role: ${role.name})';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || (other is UserModel && other.uid == uid);
+
+  @override
+  int get hashCode => uid.hashCode;
 }
