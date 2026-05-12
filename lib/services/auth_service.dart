@@ -83,7 +83,15 @@ class AuthService {
 
       // Lưu vào Firestore – dùng uid làm document ID (khớp ảnh của bạn)
       await _db.collection('users').doc(newUser.uid).set(newUser.toFirestore());
-
+      // Nếu là owner → tạo service_configs mặc định
+      if (role == UserRole.owner) {
+        await _db.collection('service_configs').add({
+          'owner_id': _db.doc('users/${newUser.uid}'), // reference giống ảnh
+          'electricPrice': 0, // giá mặc định, owner tự chỉnh sau
+          'waterPrice': 0,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
       // Cập nhật displayName trên Firebase Auth (tiện lợi về sau)
       await cred.user!.updateDisplayName(name.trim());
 

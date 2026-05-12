@@ -7,7 +7,7 @@ import 'providers/invoice_provider.dart';
 import 'providers/room_block_provider.dart';
 import 'providers/room_provider.dart';
 import 'screens/auth/login_screen.dart';
-import 'screens/manager/home_manager_screen.dart';
+import 'screens/owner/home_manager_screen.dart';
 import 'screens/user/home_user_screen.dart';
 import 'theme/app_theme.dart';
 
