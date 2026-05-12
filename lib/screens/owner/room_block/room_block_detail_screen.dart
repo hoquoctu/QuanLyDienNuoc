@@ -2,13 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../../models/room_model.dart';
-import '../../../providers/room_block_provider.dart';
-import '../../../providers/room_provider.dart';
+import '../../../models/boarding_house_model.dart';
+import '../../../models/bh_room_model.dart';
+import '../../../providers/boarding_house_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/bottom_sheet_confirm.dart';
-import '../../../widgets/status_badge.dart';
-import '../room/room_detail_screen.dart';
+import '../../../theme/StatusBadge.dart';
 
 class RoomBlockDetailScreen extends StatefulWidget {
   final String blockId;
@@ -21,32 +20,49 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
   bool _editMode = false;
   late TextEditingController _nameCtrl;
   late TextEditingController _addrCtrl;
+  late TextEditingController _descCtrl;
 
   @override
   void initState() {
     super.initState();
-    final block = context.read<RoomBlockProvider>().getById(widget.blockId)!;
-    _nameCtrl = TextEditingController(text: block.name);
-    _addrCtrl = TextEditingController(text: block.address);
+    final bh = _getBh(context);
+    _nameCtrl = TextEditingController(text: bh?.bhName ?? '');
+    _addrCtrl = TextEditingController(text: bh?.bhAddress ?? '');
+    _descCtrl = TextEditingController(text: bh?.bhDescription ?? '');
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _addrCtrl.dispose();
+    _descCtrl.dispose();
     super.dispose();
+  }
+
+  BoardingHouseModel? _getBh(BuildContext context) {
+    final list = context.read<BoardingHouseProvider>().bhList;
+    try {
+      return list.firstWhere((b) => b.bhId == widget.blockId);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final block = context.watch<RoomBlockProvider>().getById(widget.blockId);
-    if (block == null) return const SizedBox();
-    final rooms = context.watch<RoomProvider>().roomsInBlock(widget.blockId);
+    final provider = context.watch<BoardingHouseProvider>();
+    final bh = provider.bhList
+        .cast<BoardingHouseModel?>()
+        .firstWhere((b) => b?.bhId == widget.blockId, orElse: () => null);
+
+    if (bh == null) return const SizedBox();
+
+    final rooms = provider.roomsOf(widget.blockId);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
-        title: _editMode ? const Text('Chỉnh sửa dãy trọ') : Text(block.name),
+        title: _editMode ? const Text('Chỉnh sửa dãy trọ') : Text(bh.bhName),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -59,7 +75,7 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
             )
           else
             TextButton(
-              onPressed: _saveEdit,
+              onPressed: () => _saveEdit(context, bh),
               child: const Text('Lưu',
                   style: TextStyle(
                       color: AppTheme.primary, fontWeight: FontWeight.w700)),
@@ -68,122 +84,50 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
       ),
       body: Column(
         children: [
-          // Header info
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppTheme.primary, AppTheme.primaryDark],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: _editMode
-                ? Column(
-                    children: [
-                      TextField(
-                        controller: _nameCtrl,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700),
-                        decoration: const InputDecoration(
-                          labelText: 'Tên dãy trọ',
-                          labelStyle: TextStyle(color: Colors.white70),
-                          fillColor: Colors.white24,
-                          filled: true,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _addrCtrl,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13),
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: 'Địa chỉ',
-                          labelStyle: TextStyle(color: Colors.white60),
-                          fillColor: Colors.white24,
-                          filled: true,
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        block.name,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        block.address,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _StatChip(
-                              label: '${rooms.length}', desc: 'Tổng phòng'),
-                          const SizedBox(width: 20),
-                          _StatChip(
-                              label:
-                                  '${rooms.where((r) => r.status == RoomStatus.rented).length}',
-                              desc: 'Đang thuê'),
-                          const SizedBox(width: 20),
-                          _StatChip(
-                              label:
-                                  '${rooms.where((r) => r.status == RoomStatus.empty).length}',
-                              desc: 'Trống'),
-                        ],
-                      ),
-                    ],
-                  ),
+          // ── Header ──────────────────────────────────────────────────────
+          _BhHeader(
+            bh: bh,
+            rooms: rooms,
+            editMode: _editMode,
+            nameCtrl: _nameCtrl,
+            addrCtrl: _addrCtrl,
+            descCtrl: _descCtrl,
           ),
 
-          // Room list header
+          // ── Room list header ─────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Danh sách phòng',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        color: AppTheme.textPrimary)),
+                const Text(
+                  'Danh sách phòng',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: AppTheme.textPrimary),
+                ),
                 TextButton.icon(
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Thêm phòng'),
-                  onPressed: () => _showAddRoomsSheet(context, widget.blockId),
+                  onPressed: () => _showAddRoomsSheet(context),
                 ),
               ],
             ),
           ),
 
-          // Rooms
+          // ── Rooms ────────────────────────────────────────────────────────
           Expanded(
             child: rooms.isEmpty
                 ? const Center(
                     child: Text('Chưa có phòng nào',
-                        style: TextStyle(color: AppTheme.textSecondary)))
+                        style: TextStyle(color: AppTheme.textSecondary)),
+                  )
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     itemCount: rooms.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, i) =>
-                        _RoomTile(room: rooms[i], blockId: widget.blockId),
+                    itemBuilder: (ctx, i) => _RoomTile(room: rooms[i]),
                   ),
           ),
         ],
@@ -191,7 +135,8 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
     );
   }
 
-  void _saveEdit() async {
+  // ── Lưu chỉnh sửa ──────────────────────────────────────────────────────
+  Future<void> _saveEdit(BuildContext context, BoardingHouseModel bh) async {
     final ok = await showConfirmSheet<bool>(
       context,
       title: 'Xác nhận thay đổi',
@@ -199,10 +144,11 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
       confirmLabel: 'Xác nhận',
     );
     if (ok == true && mounted) {
-      final err = await context.read<RoomBlockProvider>().updateBlock(
+      final err = await context.read<BoardingHouseProvider>().updateBh(
             widget.blockId,
             name: _nameCtrl.text,
             address: _addrCtrl.text,
+            description: _descCtrl.text,
           );
       if (err != null && mounted) {
         ScaffoldMessenger.of(context)
@@ -213,87 +159,338 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
     }
   }
 
-  void _showAddRoomsSheet(BuildContext context, String blockId) {
-    final prefixCtrl = TextEditingController(text: 'B1-');
-    final startCtrl = TextEditingController(text: '1');
-    final endCtrl = TextEditingController(text: '10');
-
+  // ── Sheet thêm phòng hàng loạt ──────────────────────────────────────────
+  void _showAddRoomsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.all(Radius.circular(24)),
+      builder: (_) => _AddRoomsSheet(bhId: widget.blockId),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HEADER DÃY TRỌ
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _BhHeader extends StatelessWidget {
+  final BoardingHouseModel bh;
+  final List<BhRoomModel> rooms;
+  final bool editMode;
+  final TextEditingController nameCtrl;
+  final TextEditingController addrCtrl;
+  final TextEditingController descCtrl;
+
+  const _BhHeader({
+    required this.bh,
+    required this.rooms,
+    required this.editMode,
+    required this.nameCtrl,
+    required this.addrCtrl,
+    required this.descCtrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final occupiedCount =
+        rooms.where((r) => r.bhRoomStatus == BhRoomStatus.occupied).length;
+    final emptyCount =
+        rooms.where((r) => r.bhRoomStatus == BhRoomStatus.empty).length;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppTheme.primary, AppTheme.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: editMode
+          ? _BhEditForm(
+              nameCtrl: nameCtrl,
+              addrCtrl: addrCtrl,
+              descCtrl: descCtrl,
+            )
+          : _BhInfoDisplay(
+              bh: bh,
+              totalRooms: rooms.length,
+              occupiedCount: occupiedCount,
+              emptyCount: emptyCount,
+            ),
+    );
+  }
+}
+
+class _BhEditForm extends StatelessWidget {
+  final TextEditingController nameCtrl;
+  final TextEditingController addrCtrl;
+  final TextEditingController descCtrl;
+
+  const _BhEditForm({
+    required this.nameCtrl,
+    required this.addrCtrl,
+    required this.descCtrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextField(
+          controller: nameCtrl,
+          style: const TextStyle(
+              color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+          decoration: const InputDecoration(
+            labelText: 'Tên dãy trọ',
+            labelStyle: TextStyle(color: Colors.white70),
+            fillColor: Colors.white24,
+            filled: true,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Thêm phòng hàng loạt',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              const Text('Hệ thống sẽ tự tạo phòng từ: B1-01, B1-02...',
-                  style:
-                      TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-              const SizedBox(height: 20),
-              TextField(
-                controller: prefixCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Tiền tố (prefix)'),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: addrCtrl,
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+          maxLines: 2,
+          decoration: const InputDecoration(
+            labelText: 'Địa chỉ',
+            labelStyle: TextStyle(color: Colors.white60),
+            fillColor: Colors.white24,
+            filled: true,
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: descCtrl,
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+          maxLines: 2,
+          decoration: const InputDecoration(
+            labelText: 'Mô tả',
+            labelStyle: TextStyle(color: Colors.white60),
+            fillColor: Colors.white24,
+            filled: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BhInfoDisplay extends StatelessWidget {
+  final BoardingHouseModel bh;
+  final int totalRooms;
+  final int occupiedCount;
+  final int emptyCount;
+
+  const _BhInfoDisplay({
+    required this.bh,
+    required this.totalRooms,
+    required this.occupiedCount,
+    required this.emptyCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          bh.bhName,
+          style: const TextStyle(
+              color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          bh.bhAddress,
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+        if (bh.bhDescription.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            bh.bhDescription,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _StatChip(label: '$totalRooms', desc: 'Tổng phòng'),
+            const SizedBox(width: 20),
+            _StatChip(label: '$occupiedCount', desc: 'Đang thuê'),
+            const SizedBox(width: 20),
+            _StatChip(label: '$emptyCount', desc: 'Trống'),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHEET THÊM PHÒNG HÀNG LOẠT — fix bàn phím thật
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _AddRoomsSheet extends StatefulWidget {
+  final String bhId;
+  const _AddRoomsSheet({required this.bhId});
+
+  @override
+  State<_AddRoomsSheet> createState() => _AddRoomsSheetState();
+}
+
+class _AddRoomsSheetState extends State<_AddRoomsSheet> {
+  final _prefixCtrl = TextEditingController(text: 'P');
+  final _startCtrl = TextEditingController(text: '1');
+  final _endCtrl = TextEditingController(text: '10');
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _prefixCtrl.dispose();
+    _startCtrl.dispose();
+    _endCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final start = int.tryParse(_startCtrl.text) ?? 1;
+    final end = int.tryParse(_endCtrl.text) ?? 1;
+    if (end < start) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Số cuối phải lớn hơn số đầu')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    final provider = context.read<BoardingHouseProvider>();
+    String? lastErr;
+
+    for (int i = start; i <= end; i++) {
+      final roomNumber = '${_prefixCtrl.text}${i.toString().padLeft(2, '0')}';
+      lastErr =
+          await provider.addRoom(bhId: widget.bhId, roomNumber: roomNumber);
+      if (lastErr != null) break;
+    }
+
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (lastErr != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(lastErr)));
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.all(Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              const SizedBox(height: 10),
-              Row(children: [
+            ),
+            const Text(
+              'Thêm phòng hàng loạt',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Hệ thống sẽ tự tạo: P01, P02, P03...',
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _prefixCtrl,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Tiền tố (prefix)',
+                hintText: 'VD: P, B1-, T',
+                prefixIcon: Icon(Icons.label_outline),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
                 Expanded(
                   child: TextField(
-                    controller: startCtrl,
+                    controller: _startCtrl,
                     keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(labelText: 'Từ số'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
-                    controller: endCtrl,
+                    controller: _endCtrl,
                     keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
                     decoration: const InputDecoration(labelText: 'Đến số'),
+                    onSubmitted: (_) => _submit(),
                   ),
                 ),
-              ]),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  final start = int.tryParse(startCtrl.text) ?? 1;
-                  final end = int.tryParse(endCtrl.text) ?? 1;
-                  if (end < start) return;
-                  await context.read<RoomProvider>().addRooms(
-                        blockId,
-                        prefixCtrl.text,
-                        start,
-                        end,
-                      );
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text('Tạo phòng'),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _submit,
+                child: _saving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Tạo phòng'),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOM TILE
+// ═══════════════════════════════════════════════════════════════════════════
+
 class _RoomTile extends StatefulWidget {
-  final RoomModel room;
-  final String blockId;
-  const _RoomTile({required this.room, required this.blockId});
+  final BhRoomModel room;
+  const _RoomTile({required this.room});
+
   @override
   State<_RoomTile> createState() => _RoomTileState();
 }
@@ -318,9 +515,9 @@ class _RoomTileState extends State<_RoomTile> {
   }
 
   void _updateRemaining() {
-    final room = widget.room;
-    if (room.joinCodeExpiry != null) {
-      final diff = room.joinCodeExpiry!.difference(DateTime.now());
+    final expiry = widget.room.bhRoomJoinCodeExpiry;
+    if (expiry != null) {
+      final diff = expiry.difference(DateTime.now());
       setState(() => _remaining = diff.isNegative ? Duration.zero : diff);
     }
   }
@@ -345,184 +542,188 @@ class _RoomTileState extends State<_RoomTile> {
             color: Colors.black.withOpacity(0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: Column(
         children: [
-          // Main row
           InkWell(
             borderRadius: BorderRadius.circular(14),
             onTap: () {
-              if (room.status == RoomStatus.rented) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RoomDetailScreen(roomId: room.id),
-                  ),
-                );
-              } else {
-                setState(() => _expanded = !_expanded);
-              }
+              // TODO: navigate to RoomDetailScreen khi làm trang đó
+              setState(() => _expanded = !_expanded);
             },
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: _statusColor(room.status).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        room.name.split('-').last,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: _statusColor(room.status),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
+                  _RoomNumberBox(room: room),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(room.name,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 14)),
-                        if (room.tenantName != null)
-                          Text(room.tenantName!,
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppTheme.textSecondary)),
-                      ],
-                    ),
-                  ),
-                  StatusBadge.room(room.status),
+                  Expanded(child: _RoomTileInfo(room: room)),
+                  StatusBadge.bhRoom(room.bhRoomStatus),
                   const SizedBox(width: 8),
                   Icon(
-                    room.status == RoomStatus.rented
-                        ? Icons.chevron_right
-                        : (_expanded
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down),
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
                     color: AppTheme.textHint,
                   ),
                 ],
               ),
             ),
           ),
-
-          // Expanded content
-          if (_expanded && room.status != RoomStatus.rented)
-            _buildExpandedContent(context, room),
+          if (_expanded) _buildExpandedContent(context, room),
         ],
       ),
     );
   }
 
-  Widget _buildExpandedContent(BuildContext context, RoomModel room) {
-    final roomPvd = context.read<RoomProvider>();
-
-    if (room.status == RoomStatus.empty) {
-      return _EmptyRoomExpanded(
-        room: room,
-        remaining: _remaining,
-        onGenCode: () async {
-          await roomPvd.generateJoinCode(room.id);
-          _startTimer();
-        },
-      );
-    }
-
-    if (room.status == RoomStatus.pending) {
-      return _PendingRoomExpanded(
-        room: room,
-        onConfirm: () async {
-          final ok = await showConfirmSheet<bool>(
-            context,
-            title: 'Xác nhận cho thuê',
-            subtitle: 'Xác nhận cho ${room.tenantName} vào phòng ${room.name}?',
-            confirmLabel: 'Xác nhận cho vào',
-          );
-          if (ok == true && context.mounted) {
-            await roomPvd.confirmTenant(room.id, true);
-          }
-        },
-        onReject: () async {
-          final ok = await showConfirmSheet<bool>(
-            context,
-            title: 'Từ chối',
-            subtitle: 'Từ chối yêu cầu của ${room.tenantName}?',
-            confirmLabel: 'Từ chối',
-            confirmColor: AppTheme.errorColor,
-          );
-          if (ok == true && context.mounted) {
-            await roomPvd.confirmTenant(room.id, false);
-          }
-        },
-      );
-    }
-
-    if (room.status == RoomStatus.inactive) {
-      return _InactiveRoomExpanded(
-        room: room,
-        onReactivate: () async {
-          final ok = await showConfirmSheet<bool>(
-            context,
-            title: 'Mở lại phòng',
-            subtitle: 'Mở lại phòng ${room.name}?',
-            confirmLabel: 'Mở lại',
-          );
-          if (ok == true && context.mounted) {
-            await roomPvd.reactivateRoom(room.id);
-          }
-        },
-        onDelete: () async {
-          if (room.everRented) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Phòng đã từng có người thuê, không thể xóa!')),
+  Widget _buildExpandedContent(BuildContext context, BhRoomModel room) {
+    switch (room.bhRoomStatus) {
+      case BhRoomStatus.empty:
+        return _EmptyRoomExpanded(
+          room: room,
+          remaining: _remaining,
+          onGenCode: () {
+            // TODO: generate join code khi làm feature này
+            _startTimer();
+          },
+        );
+      case BhRoomStatus.pending:
+        return _PendingRoomExpanded(
+          room: room,
+          onConfirm: () async {
+            final ok = await showConfirmSheet<bool>(
+              context,
+              title: 'Xác nhận cho thuê',
+              subtitle:
+                  'Xác nhận cho ${room.bhRoomTenantName} vào phòng ${room.bhRoomNumber}?',
+              confirmLabel: 'Xác nhận',
             );
-            return;
-          }
-          final ok = await showConfirmSheet<bool>(
-            context,
-            title: 'Xóa vĩnh viễn',
-            subtitle: 'Xóa phòng ${room.name} vĩnh viễn?',
-            confirmLabel: 'Xóa vĩnh viễn',
-            confirmColor: AppTheme.errorColor,
-          );
-          if (ok == true && context.mounted) {
-            await roomPvd.deleteRoomPermanent(room.id);
-          }
-        },
-      );
+            if (ok == true && context.mounted) {
+              // TODO: confirm tenant
+            }
+          },
+          onReject: () async {
+            final ok = await showConfirmSheet<bool>(
+              context,
+              title: 'Từ chối',
+              subtitle: 'Từ chối yêu cầu của ${room.bhRoomTenantName}?',
+              confirmLabel: 'Từ chối',
+              confirmColor: AppTheme.errorColor,
+            );
+            if (ok == true && context.mounted) {
+              // TODO: reject tenant
+            }
+          },
+        );
+      case BhRoomStatus.inactive:
+        return _InactiveRoomExpanded(
+          room: room,
+          onReactivate: () async {
+            final ok = await showConfirmSheet<bool>(
+              context,
+              title: 'Mở lại phòng',
+              subtitle: 'Mở lại phòng ${room.bhRoomNumber}?',
+              confirmLabel: 'Mở lại',
+            );
+            if (ok == true && context.mounted) {
+              // TODO: reactivate room
+            }
+          },
+          onDelete: () async {
+            final ok = await showConfirmSheet<bool>(
+              context,
+              title: 'Xóa vĩnh viễn',
+              subtitle: 'Xóa phòng ${room.bhRoomNumber} vĩnh viễn?',
+              confirmLabel: 'Xóa vĩnh viễn',
+              confirmColor: AppTheme.errorColor,
+            );
+            if (ok == true && context.mounted) {
+              await context
+                  .read<BoardingHouseProvider>()
+                  .deleteRoom(room.bhRoomId, room.bhRoomStatus);
+            }
+          },
+        );
+      default:
+        return const SizedBox();
     }
+  }
+}
 
-    return const SizedBox();
+class _RoomNumberBox extends StatelessWidget {
+  final BhRoomModel room;
+  const _RoomNumberBox({required this.room});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _statusColor(room.bhRoomStatus);
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Center(
+        child: Text(
+          room.bhRoomNumber.length > 4
+              ? room.bhRoomNumber.substring(room.bhRoomNumber.length - 3)
+              : room.bhRoomNumber,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: color,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
   }
 
-  Color _statusColor(RoomStatus s) {
+  Color _statusColor(BhRoomStatus s) {
     switch (s) {
-      case RoomStatus.rented:
+      case BhRoomStatus.occupied:
         return AppTheme.successColor;
-      case RoomStatus.pending:
+      case BhRoomStatus.pending:
         return AppTheme.primary;
-      case RoomStatus.empty:
+      case BhRoomStatus.empty:
         return AppTheme.textSecondary;
-      case RoomStatus.inactive:
+      case BhRoomStatus.inactive:
         return AppTheme.errorColor;
     }
   }
 }
 
+class _RoomTileInfo extends StatelessWidget {
+  final BhRoomModel room;
+  const _RoomTileInfo({required this.room});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          room.bhRoomNumber,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+        ),
+        if (room.bhRoomTenantName != null)
+          Text(
+            room.bhRoomTenantName!,
+            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+          ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPANDED STATES
+// ═══════════════════════════════════════════════════════════════════════════
+
 class _EmptyRoomExpanded extends StatelessWidget {
-  final RoomModel room;
+  final BhRoomModel room;
   final Duration remaining;
   final VoidCallback onGenCode;
   const _EmptyRoomExpanded(
@@ -530,7 +731,7 @@ class _EmptyRoomExpanded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasCode = room.isJoinCodeValid;
+    final hasCode = room.isBhRoomJoinCodeValid;
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
       padding: const EdgeInsets.all(16),
@@ -549,7 +750,8 @@ class _EmptyRoomExpanded extends StatelessWidget {
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () {
-                    Clipboard.setData(ClipboardData(text: room.joinCode!));
+                    Clipboard.setData(
+                        ClipboardData(text: room.bhRoomJoinCode!));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Đã sao chép mã!')),
                     );
@@ -567,7 +769,7 @@ class _EmptyRoomExpanded extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          room.joinCode!,
+                          room.bhRoomJoinCode!,
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w900,
@@ -625,7 +827,7 @@ class _EmptyRoomExpanded extends StatelessWidget {
 }
 
 class _PendingRoomExpanded extends StatelessWidget {
-  final RoomModel room;
+  final BhRoomModel room;
   final VoidCallback onConfirm;
   final VoidCallback onReject;
   const _PendingRoomExpanded(
@@ -655,8 +857,10 @@ class _PendingRoomExpanded extends StatelessWidget {
               const Icon(Icons.person_outline,
                   size: 16, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
-              Text(room.tenantName ?? 'Người dùng',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                room.bhRoomTenantName ?? 'Người dùng',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -690,7 +894,7 @@ class _PendingRoomExpanded extends StatelessWidget {
 }
 
 class _InactiveRoomExpanded extends StatelessWidget {
-  final RoomModel room;
+  final BhRoomModel room;
   final VoidCallback onReactivate;
   final VoidCallback onDelete;
   const _InactiveRoomExpanded(
@@ -718,23 +922,25 @@ class _InactiveRoomExpanded extends StatelessWidget {
               ),
             ),
           ),
-          if (!room.everRented) ...[
-            const SizedBox(width: 10),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_forever, size: 16),
-                label: const Text('Xóa vĩnh viễn'),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.errorColor),
-              ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_forever, size: 16),
+              label: const Text('Xóa phòng'),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.errorColor),
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STAT CHIP
+// ═══════════════════════════════════════════════════════════════════════════
 
 class _StatChip extends StatelessWidget {
   final String label;

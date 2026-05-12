@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
+import 'providers/boarding_house_provider.dart';
 import 'providers/invoice_provider.dart';
-import 'providers/room_block_provider.dart';
-import 'providers/room_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/owner/home_manager_screen.dart';
 import 'screens/user/home_user_screen.dart';
@@ -19,8 +17,7 @@ class QuanLyDienNuocApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => RoomBlockProvider()),
-        ChangeNotifierProvider(create: (_) => RoomProvider()),
+        ChangeNotifierProvider(create: (_) => BoardingHouseProvider()),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
       ],
       child: MaterialApp(
@@ -50,34 +47,15 @@ class _AppRootState extends State<_AppRoot> {
 
   Future<void> _init() async {
     final auth = context.read<AuthProvider>();
-    final blocks = context.read<RoomBlockProvider>();
-    final rooms = context.read<RoomProvider>();
-    final invoices = context.read<InvoiceProvider>();
+    await auth.init();
 
-    try {
-      await Future.wait([
-        auth.init(),
-        blocks.init(),
-        rooms.init(),
-        invoices.init(),
-      ]);
-    } catch (e) {
-      debugPrint('Error initializing providers (corrupted data): $e');
-      // Xóa toàn bộ dữ liệu cũ do cấu trúc model có thể đã thay đổi
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      // Khởi tạo lại với dữ liệu mẫu
-      await Future.wait([
-        auth.init(),
-        blocks.init(),
-        rooms.init(),
-        invoices.init(),
-      ]);
+    // Sau khi auth xong, nếu là owner thì init dãy trọ luôn
+    final user = auth.currentUser;
+    if (user != null && user.isOwner) {
+      context.read<BoardingHouseProvider>().initForOwner(user.uid);
     }
 
-    if (mounted) {
-      setState(() => _initialized = true);
-    }
+    if (mounted) setState(() => _initialized = true);
   }
 
   @override
