@@ -98,8 +98,7 @@ class BoardingHouseProvider extends ChangeNotifier {
   }) =>
       _svc.addRoom(bhId: bhId, roomNumber: roomNumber);
 
-  Future<String?> deleteRoom(String roomId, BhRoomStatus status) async {
-    if (status == BhRoomStatus.occupied) return 'Phòng đang có người thuê!';
+  Future<String?> deleteRoom(String roomId) async {
     return _svc.deleteRoom(roomId);
   }
 

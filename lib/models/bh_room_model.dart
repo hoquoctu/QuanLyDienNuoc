@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum BhRoomStatus {
-  empty, // key: available
+  available, // key: available
   occupied, // key: occupied
   pending, // key: pending
   inactive, // key: inactive
@@ -31,7 +31,7 @@ class BhRoomModel {
     required this.bhRoomId,
     required this.bhId,
     required this.bhRoomNumber,
-    this.bhRoomStatus = BhRoomStatus.empty,
+    this.bhRoomStatus = BhRoomStatus.available,
     this.bhRoomTenantId,
     this.bhRoomTenantName,
     this.bhRoomCode,
@@ -125,7 +125,7 @@ class BhRoomModel {
       case 'inactive':
         return BhRoomStatus.inactive;
       default:
-        return BhRoomStatus.empty;
+        return BhRoomStatus.available;
     }
   }
 
@@ -137,7 +137,7 @@ class BhRoomModel {
         return 'pending';
       case BhRoomStatus.inactive:
         return 'inactive';
-      case BhRoomStatus.empty:
+      case BhRoomStatus.available:
         return 'available';
     }
   }

@@ -39,7 +39,7 @@ class StatusBadge extends StatelessWidget {
         return AppTheme.successColor;
       case BhRoomStatus.pending:
         return AppTheme.primary;
-      case BhRoomStatus.empty:
+      case BhRoomStatus.available:
         return AppTheme.textSecondary;
       case BhRoomStatus.inactive:
         return AppTheme.errorColor;

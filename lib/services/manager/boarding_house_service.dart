@@ -76,9 +76,49 @@ class BoardingHouseService {
     }
   }
 
+  /// Xóa dãy trọ:
+  /// - Nếu tất cả phòng đều không có bill → xóa thẳng toàn bộ phòng + dãy
+  /// - Nếu có phòng từng có bill → chuyển dãy thành inactive, giữ data
   Future<String?> deleteBoardingHouse(String bhId) async {
     try {
-      await _db.collection('boardingHouse').doc(bhId).delete();
+      final bhRef = _db.doc('boardingHouse/$bhId');
+
+      // Lấy tất cả phòng trong dãy
+      final roomSnap = await _db
+          .collection('room')
+          .where('boarding_house', isEqualTo: bhRef)
+          .get();
+
+      // Kiểm tra từng phòng có bill không
+      bool hasBill = false;
+      for (final roomDoc in roomSnap.docs) {
+        final roomRef = _db.doc('room/${roomDoc.id}');
+        final billSnap = await _db
+            .collection('bills')
+            .where('id_room', isEqualTo: roomRef)
+            .limit(1)
+            .get();
+        if (billSnap.docs.isNotEmpty) {
+          hasBill = true;
+          break;
+        }
+      }
+
+      if (hasBill) {
+        // Có bill → chuyển dãy thành inactive
+        await _db.collection('boardingHouse').doc(bhId).update({
+          'status': _db.doc('status/inactive'),
+        });
+        return null;
+      }
+
+      // Không có bill → xóa toàn bộ phòng rồi xóa dãy
+      final batch = _db.batch();
+      for (final roomDoc in roomSnap.docs) {
+        batch.delete(roomDoc.reference);
+      }
+      batch.delete(_db.collection('boardingHouse').doc(bhId));
+      await batch.commit();
       return null;
     } catch (e) {
       return 'Xóa thất bại: $e';
@@ -89,6 +129,7 @@ class BoardingHouseService {
 
   Stream<List<BhRoomModel>> streamRoomsByBh(String bhId) {
     final bhRef = _db.doc('boardingHouse/$bhId');
+
     return _db
         .collection('room')
         .where('boarding_house', isEqualTo: bhRef)
@@ -116,8 +157,30 @@ class BoardingHouseService {
     }
   }
 
+  /// Xóa phòng:
+  /// - Không có bill → xóa thẳng
+  /// - Có bill → chuyển status thành inactive, giữ data
   Future<String?> deleteRoom(String roomId) async {
     try {
+      final roomRef = _db.doc('room/$roomId');
+
+      // Kiểm tra phòng có bill không
+      final billSnap = await _db
+          .collection('bills')
+          .where('id_room', isEqualTo: roomRef)
+          .limit(1)
+          .get();
+
+      if (billSnap.docs.isNotEmpty) {
+        // Có bill → inactive
+        await _db.collection('room').doc(roomId).update({
+          'status': _db.doc('status/inactive'),
+          'update_time': Timestamp.fromDate(DateTime.now()),
+        });
+        return null;
+      }
+
+      // Không có bill → xóa thẳng
       await _db.collection('room').doc(roomId).delete();
       return null;
     } catch (e) {

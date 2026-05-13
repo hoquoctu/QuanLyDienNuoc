@@ -31,7 +31,7 @@ class BhHeader extends StatelessWidget {
     final occupiedCount =
         rooms.where((r) => r.bhRoomStatus == BhRoomStatus.occupied).length;
     final emptyCount =
-        rooms.where((r) => r.bhRoomStatus == BhRoomStatus.empty).length;
+        rooms.where((r) => r.bhRoomStatus == BhRoomStatus.available).length;
 
     return Container(
       width: double.infinity,

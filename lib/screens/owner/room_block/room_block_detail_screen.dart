@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/boarding_house_model.dart';
 import '../../../providers/boarding_house_provider.dart';
+import '../../../providers/auth_provider.dart'; // import auth để lấy ownerName
 import '../../../theme/app_theme.dart';
 import '../../../widgets/bottom_sheet_confirm.dart';
 import '../../../widgets/owner/boarding_house/detail_room/AddRoomsSheetState.dart';
@@ -58,6 +59,12 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
     if (bh == null) return const SizedBox();
 
     final rooms = provider.roomsOf(widget.blockId);
+
+    // Lấy thông tin owner từ auth provider
+    // Nếu m dùng tên provider khác thì sửa lại dòng này
+    final user = context.read<AuthProvider>().currentUser;
+    final ownerId = user?.uid ?? '';
+    final ownerName = user?.name ?? 'Chủ trọ';
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -127,7 +134,12 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     itemCount: rooms.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, i) => RoomTile(room: rooms[i]),
+                    itemBuilder: (ctx, i) => RoomTile(
+                      room: rooms[i],
+                      bhName: bh.bhName,
+                      ownerId: ownerId,
+                      ownerName: ownerName,
+                    ),
                   ),
           ),
         ],
@@ -169,7 +181,3 @@ class _RoomBlockDetailScreenState extends State<RoomBlockDetailScreen> {
     );
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// EXPANDED STATES
-// ═══════════════════════════════════════════════════════════════════════════
