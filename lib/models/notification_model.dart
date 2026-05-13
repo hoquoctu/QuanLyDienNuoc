@@ -1,126 +1,131 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum NotificationType {
-  unlinkRequest, // owner gửi yêu cầu hủy liên kết cho tenant
-  unlinkAccepted, // tenant xác nhận hủy liên kết
-  unlinkRejected, // tenant từ chối hủy liên kết
-  priceUpdate, // owner cập nhật giá điện/nước
+  system,
+  payment,
+  room,
 }
 
 class NotificationModel {
   final String notifId;
-  final String receiverId; // userId nhận thông báo (document cha)
-  final String? senderId; // userId gửi (owner hoặc tenant)
-  final NotificationType type;
-  final String content;
-  final bool isRead;
-  final DateTime createdAt;
 
-  // Data tuỳ theo type
-  final String? requestId; // dùng cho unlink
-  final String? roomId;
-  final String? roomNumber;
+  final String content;
+
+  final NotificationType type;
+
+  final String? senderId;
+
+  final DateTime createdAt;
 
   const NotificationModel({
     required this.notifId,
-    required this.receiverId,
-    this.senderId,
-    required this.type,
     required this.content,
-    required this.isRead,
+    required this.type,
     required this.createdAt,
-    this.requestId,
-    this.roomId,
-    this.roomNumber,
+    this.senderId,
   });
 
-  factory NotificationModel.fromDoc(String receiverId, DocumentSnapshot doc) {
+  factory NotificationModel.fromDoc(
+    DocumentSnapshot doc,
+  ) {
     final d = doc.data() as Map<String, dynamic>;
 
-    final typeStr = d['type'] as String? ?? '';
-    final type = _typeFromString(typeStr);
+    String? senderId;
 
     final senderRef = d['sender_id'];
-    String? senderId;
+
     if (senderRef is DocumentReference) {
       senderId = senderRef.id;
     }
 
-    final roomRef = d['id_room'];
-    String? roomId;
-    if (roomRef is DocumentReference) {
-      roomId = roomRef.id;
-    }
-
-    final requestRef = d['id_request'];
-    String? requestId;
-    if (requestRef is DocumentReference) {
-      requestId = requestRef.id;
-    }
-
     return NotificationModel(
       notifId: doc.id,
-      receiverId: receiverId,
+      content: d['content'] ?? '',
+      type: _typeFromString(
+        d['type'] ?? '',
+      ),
       senderId: senderId,
-      type: type,
-      content: d['content'] as String? ?? '',
-      isRead: d['is_read'] as bool? ?? false,
       createdAt: (d['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      requestId: requestId,
-      roomId: roomId,
-      roomNumber: d['room_number'] as String?,
     );
   }
 
-  Map<String, dynamic> toFirestore(FirebaseFirestore db, String receiverId) => {
-        'sender_id': senderId != null ? db.doc('users/$senderId') : null,
-        'type': _typeToString(type),
-        'content': content,
-        'is_read': isRead,
-        'created_at': Timestamp.fromDate(createdAt),
-        if (requestId != null) 'id_request': db.doc('request/$requestId'),
-        if (roomId != null) 'id_room': db.doc('room/$roomId'),
-        if (roomNumber != null) 'room_number': roomNumber,
-      };
+  Map<String, dynamic> toFirestore(
+    FirebaseFirestore db,
+  ) {
+    return {
+      'content': content,
+      'type': _typeToString(type),
+      'sender_id': senderId != null ? db.doc('users/$senderId') : null,
+      'created_at': Timestamp.fromDate(createdAt),
+    };
+  }
 
-  NotificationModel copyWith({bool? isRead}) => NotificationModel(
-        notifId: notifId,
-        receiverId: receiverId,
-        senderId: senderId,
-        type: type,
-        content: content,
-        isRead: isRead ?? this.isRead,
-        createdAt: createdAt,
-        requestId: requestId,
-        roomId: roomId,
-        roomNumber: roomNumber,
-      );
-
-  static NotificationType _typeFromString(String s) {
+  static NotificationType _typeFromString(
+    String s,
+  ) {
     switch (s) {
-      case 'unlink_request':
-        return NotificationType.unlinkRequest;
-      case 'unlink_accepted':
-        return NotificationType.unlinkAccepted;
-      case 'unlink_rejected':
-        return NotificationType.unlinkRejected;
-      case 'price_update':
-        return NotificationType.priceUpdate;
+      case 'payment':
+        return NotificationType.payment;
+
+      case 'room':
+        return NotificationType.room;
+
       default:
-        return NotificationType.unlinkRequest;
+        return NotificationType.system;
     }
   }
 
-  static String _typeToString(NotificationType t) {
+  static String _typeToString(
+    NotificationType t,
+  ) {
     switch (t) {
-      case NotificationType.unlinkRequest:
-        return 'unlink_request';
-      case NotificationType.unlinkAccepted:
-        return 'unlink_accepted';
-      case NotificationType.unlinkRejected:
-        return 'unlink_rejected';
-      case NotificationType.priceUpdate:
-        return 'price_update';
+      case NotificationType.system:
+        return 'system';
+
+      case NotificationType.payment:
+        return 'payment';
+
+      case NotificationType.room:
+        return 'room';
     }
+  }
+}
+
+class NotificationReceiverModel {
+  final String itemId;
+
+  final String receiverId;
+
+  final bool isRead;
+
+  const NotificationReceiverModel({
+    required this.itemId,
+    required this.receiverId,
+    required this.isRead,
+  });
+
+  factory NotificationReceiverModel.fromDoc(
+    DocumentSnapshot doc,
+  ) {
+    final d = doc.data() as Map<String, dynamic>;
+
+    final receiverRef = d['receiver_id'] as DocumentReference;
+
+    return NotificationReceiverModel(
+      itemId: doc.id,
+      receiverId: receiverRef.id,
+      isRead: d['is_read'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toFirestore(
+    FirebaseFirestore db,
+  ) {
+    return {
+      'receiver_id': db.doc(
+        'users/$receiverId',
+      ),
+      'is_read': isRead,
+    };
   }
 }

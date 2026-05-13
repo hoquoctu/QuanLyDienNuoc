@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:quanlydiennc_app/services/manager/boarding_house_service.dart';
 import '../models/boarding_house_model.dart';
 import '../models/bh_room_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BoardingHouseProvider extends ChangeNotifier {
   final _svc = BoardingHouseService.instance;
@@ -121,6 +122,18 @@ class BoardingHouseProvider extends ChangeNotifier {
     _roomSubs.clear();
     _roomMap.clear();
     _bhList = [];
+  }
+
+  Future<void> updateLastReading({
+    required String roomId,
+    required double electric,
+    required double water,
+  }) async {
+    await FirebaseFirestore.instance.collection('room').doc(roomId).update({
+      'last_electric': electric,
+      'last_water': water,
+      'updated_at': Timestamp.now(),
+    });
   }
 
   @override

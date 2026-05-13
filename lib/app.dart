@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/providers/room_provider.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
 import 'providers/boarding_house_provider.dart';
-import 'providers/invoice_provider.dart';
+import 'providers/bill_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/owner/home_manager_screen.dart';
 import 'screens/user/home_user_screen.dart';
@@ -17,8 +18,9 @@ class QuanLyDienNuocApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => RoomProvider()),
         ChangeNotifierProvider(create: (_) => BoardingHouseProvider()),
-        ChangeNotifierProvider(create: (_) => InvoiceProvider()),
+        ChangeNotifierProvider(create: (_) => BillProvider()),
       ],
       child: MaterialApp(
         title: 'SmartUtility - Quản lý điện nước',

@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
-import '../models/invoice_model.dart';
 import '../models/room_model.dart';
 import '../theme/app_theme.dart';
 
 class StatusBadge extends StatelessWidget {
-  final InvoiceStatus? invoiceStatus;
+  final String? billStatus;
+
   final RoomStatus? roomStatus;
 
-  const StatusBadge.invoice(this.invoiceStatus, {super.key})
-      : roomStatus = null;
-  const StatusBadge.room(this.roomStatus, {super.key})
-      : invoiceStatus = null;
+  const StatusBadge.bill(
+    this.billStatus, {
+    super.key,
+  }) : roomStatus = null;
+
+  const StatusBadge.room(
+    this.roomStatus, {
+    super.key,
+  }) : billStatus = null;
 
   @override
   Widget build(BuildContext context) {
@@ -18,24 +23,24 @@ class StatusBadge extends StatelessWidget {
     Color fg;
     String label;
 
-    if (invoiceStatus != null) {
-      switch (invoiceStatus!) {
-        case InvoiceStatus.paid:
+    // ───────── BILL STATUS ─────────
+
+    if (billStatus != null) {
+      switch (billStatus) {
+        case 'paid':
           bg = AppTheme.successColor.withOpacity(0.12);
           fg = AppTheme.successColor;
           label = 'Đã thanh toán';
           break;
-        case InvoiceStatus.paidLate:
-          bg = AppTheme.warningColor.withOpacity(0.12);
-          fg = AppTheme.warningColor;
-          label = 'Thanh toán trễ';
-          break;
-        case InvoiceStatus.pendingConfirm:
+
+        case 'pending':
           bg = AppTheme.primary.withOpacity(0.12);
           fg = AppTheme.primary;
           label = 'Chờ xác nhận';
           break;
-        case InvoiceStatus.waitingPayment:
+
+        case 'unpaid':
+        default:
           bg = AppTheme.errorColor.withOpacity(0.12);
           fg = AppTheme.errorColor;
           label = 'Chưa thanh toán';

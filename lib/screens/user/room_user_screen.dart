@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/room_provider.dart';
-import '../../providers/room_block_provider.dart';
 import '../../models/room_model.dart';
 import '../../theme/app_theme.dart';
 
@@ -51,9 +50,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().currentUser!;
     final room = context.watch<RoomProvider>().roomForTenant(user.uid);
-    final block = room != null
-        ? context.read<RoomBlockProvider>().getById(room.blockId)
-        : null;
+    final block = room != null ? "no data" : null;
 
     return Scaffold(
       backgroundColor: AppTheme.surface,

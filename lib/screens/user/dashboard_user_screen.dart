@@ -2,13 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../models/invoice_model.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/invoice_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/status_badge.dart';
-import 'invoice_detail_screen.dart';
+import '../../providers/bill_provider.dart';
 
 class DashboardUserScreen extends StatelessWidget {
   const DashboardUserScreen({super.key});
@@ -16,19 +13,19 @@ class DashboardUserScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().currentUser!;
-    final invPvd = context.watch<InvoiceProvider>();
+    final invPvd = context.watch<BillProvider>();
     final roomPvd = context.watch<RoomProvider>();
     final room = roomPvd.roomForTenant(user.uid);
-    final invoices = invPvd.invoicesForTenant(user.uid);
-    final unpaid = invoices
-        .where((i) =>
-            i.status == InvoiceStatus.waitingPayment ||
-            i.status == InvoiceStatus.pendingConfirm)
-        .toList();
+    final invoices = invPvd.getBillsByTenant(user.uid);
+    // final unpaid = invoices
+    //     .where((i) =>
+    //         i.status == InvoiceStatus.waitingPayment ||
+    //         i.status == InvoiceStatus.pendingConfirm)
+    //     .toList();
     final fmt = NumberFormat('#,###', 'vi_VN');
 
     // Chart data - last 5 months
-    final chartData = _buildChartData(invoices);
+    // final chartData = _buildChartData(invoices);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -75,103 +72,103 @@ class DashboardUserScreen extends StatelessWidget {
             title:
                 const Text('Tổng quan', style: TextStyle(color: Colors.white)),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // Stats row
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.bolt,
-                        iconColor: AppTheme.elecColor,
-                        label: 'Điện tháng này',
-                        value: invoices.isNotEmpty
-                            ? '${fmt.format(invoices.first.elecUsed)} kWh'
-                            : '-- kWh',
-                        trend: _calcTrend(invoices, isElec: true),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.water_drop,
-                        iconColor: AppTheme.waterColor,
-                        label: 'Nước tháng này',
-                        value: invoices.isNotEmpty
-                            ? '${fmt.format(invoices.first.waterUsed)} m³'
-                            : '-- m³',
-                        trend: _calcTrend(invoices, isElec: false),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+          // SliverPadding(
+          //   padding: const EdgeInsets.all(16),
+          //   sliver: SliverList(
+          //     delegate: SliverChildListDelegate([
+          //       // Stats row
+          //       Row(
+          //         children: [
+          //           Expanded(
+          //             child: _StatCard(
+          //               icon: Icons.bolt,
+          //               iconColor: AppTheme.elecColor,
+          //               label: 'Điện tháng này',
+          //               value: invoices.isNotEmpty
+          //                   ? '${fmt.format(invoices.first.elecUsed)} kWh'
+          //                   : '-- kWh',
+          //               // trend: _calcTrend(invoices, isElec: true),
+          //             ),
+          //           ),
+          //           const SizedBox(width: 12),
+          //           Expanded(
+          //             child: _StatCard(
+          //               icon: Icons.water_drop,
+          //               iconColor: AppTheme.waterColor,
+          //               label: 'Nước tháng này',
+          //               value: invoices.isNotEmpty
+          //                   ? '${fmt.format(invoices.first.waterUsed)} m³'
+          //                   : '-- m³',
+          //               // trend: _calcTrend(invoices, isElec: false),
+          //             ),
+          //           ),
+          //         ],
+          //       ),
+          //       const SizedBox(height: 16),
 
-                // Unpaid invoices alert
-                if (unpaid.isNotEmpty) ...[
-                  const Text('Hóa đơn chờ thanh toán',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: AppTheme.textPrimary)),
-                  const SizedBox(height: 10),
-                  ...unpaid.map((inv) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => InvoiceDetailScreen(invoice: inv),
-                            ),
-                          ),
-                          child: _UnpaidCard(invoice: inv, fmt: fmt),
-                        ),
-                      )),
-                  const SizedBox(height: 16),
-                ],
+          //       // Unpaid invoices alert
+          //       // if (unpaid.isNotEmpty) ...[
+          //       //   const Text('Hóa đơn chờ thanh toán',
+          //       //       style: TextStyle(
+          //       //           fontWeight: FontWeight.w800,
+          //       //           fontSize: 15,
+          //       //           color: AppTheme.textPrimary)),
+          //       //   const SizedBox(height: 10),
+          //       //   ...unpaid.map((inv) => Padding(
+          //       //         padding: const EdgeInsets.only(bottom: 8),
+          //       //         child: GestureDetector(
+          //       //           onTap: () => Navigator.push(
+          //       //             context,
+          //       //             MaterialPageRoute(
+          //       //               builder: (_) => InvoiceDetailScreen(invoice: inv),
+          //       //             ),
+          //       //           ),
+          //       //           child: _UnpaidCard(invoice: inv, fmt: fmt),
+          //       //         ),
+          //       //       )),
+          //       //   const SizedBox(height: 16),
+          //       // ],
 
-                // Chart total
-                const Text('Biểu đồ chi phí điện nước',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: AppTheme.textPrimary)),
-                const SizedBox(height: 12),
-                _TotalChart(data: chartData),
-                const SizedBox(height: 16),
+          //       // Chart total
+          //       const Text('Biểu đồ chi phí điện nước',
+          //           style: TextStyle(
+          //               fontWeight: FontWeight.w800,
+          //               fontSize: 15,
+          //               color: AppTheme.textPrimary)),
+          //       const SizedBox(height: 12),
+          //       // _TotalChart(data: chartData),
+          //       // const SizedBox(height: 16),
 
-                // Chart elec+water
-                _ElecWaterChart(data: chartData),
-                const SizedBox(height: 30),
-              ]),
-            ),
-          ),
+          //       // // Chart elec+water
+          //       // _ElecWaterChart(data: chartData),
+          //       const SizedBox(height: 30),
+          //     ]),
+          //   ),
+          // ),
         ],
       ),
     );
   }
 
-  List<Map<String, double>> _buildChartData(List<InvoiceModel> invoices) {
-    final now = DateTime.now();
-    return List.generate(5, (i) {
-      final m = DateTime(now.year, now.month - (4 - i));
-      final inv = invoices.where((inv) =>
-          inv.createdAt.year == m.year && inv.createdAt.month == m.month);
-      final elec = inv.fold<double>(0, (sum, i) => sum + i.elecTotal);
-      final water = inv.fold<double>(0, (sum, i) => sum + i.waterTotal);
-      return {'month': m.month.toDouble(), 'elec': elec, 'water': water};
-    });
-  }
+  // List<Map<String, double>> _buildChartData(List<InvoiceModel> invoices) {
+  //   final now = DateTime.now();
+  //   return List.generate(5, (i) {
+  //     final m = DateTime(now.year, now.month - (4 - i));
+  //     final inv = invoices.where((inv) =>
+  //         inv.createdAt.year == m.year && inv.createdAt.month == m.month);
+  //     final elec = inv.fold<double>(0, (sum, i) => sum + i.elecTotal);
+  //     final water = inv.fold<double>(0, (sum, i) => sum + i.waterTotal);
+  //     return {'month': m.month.toDouble(), 'elec': elec, 'water': water};
+  //   });
+  // }
 
-  double? _calcTrend(List<InvoiceModel> invoices, {required bool isElec}) {
-    if (invoices.length < 2) return null;
-    final curr = isElec ? invoices[0].elecUsed : invoices[0].waterUsed;
-    final prev = isElec ? invoices[1].elecUsed : invoices[1].waterUsed;
-    if (prev == 0) return null;
-    return ((curr - prev) / prev) * 100;
-  }
+  // double? _calcTrend(List<InvoiceModel> invoices, {required bool isElec}) {
+  //   if (invoices.length < 2) return null;
+  //   final curr = isElec ? invoices[0].elecUsed : invoices[0].waterUsed;
+  //   final prev = isElec ? invoices[1].elecUsed : invoices[1].waterUsed;
+  //   if (prev == 0) return null;
+  //   return ((curr - prev) / prev) * 100;
+  // }
 }
 
 class _StatCard extends StatelessWidget {
@@ -253,44 +250,44 @@ class _StatCard extends StatelessWidget {
 }
 
 class _UnpaidCard extends StatelessWidget {
-  final InvoiceModel invoice;
-  final NumberFormat fmt;
-  const _UnpaidCard({required this.invoice, required this.fmt});
+  // final InvoiceModel invoice;
+  // final NumberFormat fmt;
+  // const _UnpaidCard({required this.invoice, required this.fmt});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.errorColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.errorColor.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded,
-              color: AppTheme.errorColor, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${invoice.blockName} - ${invoice.roomName}',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
-                StatusBadge.invoice(invoice.status),
-              ],
-            ),
-          ),
-          Text(
-            '${fmt.format(invoice.grandTotal)}đ',
-            style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: AppTheme.errorColor,
-                fontSize: 15),
-          ),
-          const Icon(Icons.chevron_right, color: AppTheme.textHint),
-        ],
-      ),
+      // decoration: BoxDecoration(
+      //   color: AppTheme.errorColor.withOpacity(0.05),
+      //   borderRadius: BorderRadius.circular(14),
+      //   border: Border.all(color: AppTheme.errorColor.withOpacity(0.2)),
+      // ),
+      // child: Row(
+      //   children: [
+      //     const Icon(Icons.warning_amber_rounded,
+      //         color: AppTheme.errorColor, size: 24),
+      //     const SizedBox(width: 12),
+      //     Expanded(
+      //       child: Column(
+      //         crossAxisAlignment: CrossAxisAlignment.start,
+      //         children: [
+      //           Text('${invoice.blockName} - ${invoice.roomName}',
+      //               style: const TextStyle(fontWeight: FontWeight.w700)),
+      //           StatusBadge.invoice(invoice.status),
+      //         ],
+      //       ),
+      //     ),
+      //     Text(
+      //       '${fmt.format(invoice.grandTotal)}đ',
+      //       style: const TextStyle(
+      //           fontWeight: FontWeight.w800,
+      //           color: AppTheme.errorColor,
+      //           fontSize: 15),
+      //     ),
+      //     const Icon(Icons.chevron_right, color: AppTheme.textHint),
+      //   ],
+      // ),
     );
   }
 }

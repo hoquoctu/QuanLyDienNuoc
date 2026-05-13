@@ -44,13 +44,13 @@ class BhRoomModel {
   // Code còn hiệu lực không (30 phút kể từ time_start)
   bool get isBhRoomCodeValid {
     if (bhRoomCode == null || bhRoomTimeStart == null) return false;
-    final expiry = bhRoomTimeStart!.add(const Duration(seconds: 10));
+    final expiry = bhRoomTimeStart!.add(const Duration(minutes: 2));
     return DateTime.now().isBefore(expiry);
   }
 
   // Thời gian hết hạn (để đếm ngược)
   DateTime? get bhRoomCodeExpiry =>
-      bhRoomTimeStart?.add(const Duration(seconds: 10));
+      bhRoomTimeStart?.add(const Duration(minutes: 2));
 
   // ── Từ Firestore doc ───────────────────────────────────────────────────
   factory BhRoomModel.fromDoc(DocumentSnapshot doc) {

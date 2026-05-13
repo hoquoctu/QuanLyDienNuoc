@@ -201,7 +201,7 @@ class BoardingHouseService {
       if (data != null) {
         final timeStart = (data['time_start'] as Timestamp?)?.toDate();
         if (timeStart != null) {
-          final expiry = timeStart.add(const Duration(seconds: 10));
+          final expiry = timeStart.add(const Duration(minutes: 2));
           if (DateTime.now().isBefore(expiry)) {
             return 'Mã hiện tại vẫn còn hiệu lực';
           }

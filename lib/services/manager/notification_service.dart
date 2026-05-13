@@ -1,139 +1,240 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../models/notification_model.dart';
 
-/// Xử lý toàn bộ việc gửi và lấy thông báo.
-/// Cấu trúc Firestore:
-///   notifications/{userId}/item/{notifId}
+/// FIREBASE STRUCTURE
+///
+/// notifications/{notificationId}
+///    ├── content
+///    ├── type
+///    ├── sender_id
+///    ├── created_at
+///    └── item/{itemId}
+///          ├── receiver_id
+///          └── is_read
+
 class NotificationService {
   NotificationService._();
+
   static final NotificationService instance = NotificationService._();
 
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // ── Stream thông báo của 1 user (mới nhất trước) ──────────────────────
-  Stream<List<NotificationModel>> streamNotifications(String userId) {
-    return _db
-        .collection('notifications')
-        .doc(userId)
-        .collection('item')
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => NotificationModel.fromDoc(userId, d))
-            .toList());
-  }
+  // ───────────────── CREATE SINGLE ─────────────────
 
-  // ── Gửi thông báo đến 1 user ──────────────────────────────────────────
-  Future<String?> sendToUser(
-    String receiverId,
-    NotificationModel notif,
-  ) async {
-    try {
-      await _db
-          .collection('notifications')
-          .doc(receiverId)
-          .collection('item')
-          .add(notif.toFirestore(_db, receiverId));
-      return null;
-    } catch (e) {
-      return 'Gửi thông báo thất bại: $e';
-    }
-  }
-
-  // ── Gửi thông báo cập nhật giá đến tất cả tenant trong 1 dãy trọ ─────
-  /// Dùng khi owner cập nhật giá điện/nước:
-  /// 1. Lấy tất cả phòng của dãy đó có status occupied
-  /// 2. Gửi thông báo đến từng tenant
-  Future<String?> broadcastPriceUpdate({
-    required String bhId,
-    required String bhName,
-    required String ownerId,
+  Future<String?> createNotification({
+    required String receiverId,
+    required String senderId,
+    required NotificationType type,
     required String content,
   }) async {
     try {
-      final bhRef = _db.doc('boardingHouse/$bhId');
-      final statusRef = _db.doc('status/occupied');
+      final notifRef = _db.collection('notifications').doc();
 
-      // Lấy tất cả phòng occupied trong dãy
-      final roomSnap = await _db
-          .collection('room')
-          .where('boarding_house', isEqualTo: bhRef)
-          .where('status', isEqualTo: statusRef)
-          .get();
+      final itemRef = notifRef.collection('item').doc();
 
-      if (roomSnap.docs.isEmpty) return null;
+      // notification data
+      final notif = NotificationModel(
+        notifId: notifRef.id,
+        content: content,
+        type: type,
+        senderId: senderId,
+        createdAt: DateTime.now(),
+      );
+
+      // create notification
+      await notifRef.set(
+        notif.toFirestore(_db),
+      );
+
+      // create receiver item
+      await itemRef.set({
+        'receiver_id': _db.doc('users/$receiverId'),
+        'is_read': false,
+      });
+
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // ───────────────── BROADCAST ─────────────────
+
+  Future<String?> broadcastNotification({
+    required List<String> receiverIds,
+    required String senderId,
+    required NotificationType type,
+    required String content,
+  }) async {
+    try {
+      final notifRef = _db.collection('notifications').doc();
 
       final batch = _db.batch();
-      final now = DateTime.now();
 
-      for (final roomDoc in roomSnap.docs) {
-        final data = roomDoc.data();
-        final tenantRef = data['tenant_id'];
-        if (tenantRef == null || tenantRef is! DocumentReference) continue;
+      // create main notification
+      final notif = NotificationModel(
+        notifId: notifRef.id,
+        content: content,
+        type: type,
+        senderId: senderId,
+        createdAt: DateTime.now(),
+      );
 
-        final tenantId = tenantRef.id;
-        final notifRef = _db
-            .collection('notifications')
-            .doc(tenantId)
-            .collection('item')
-            .doc();
+      batch.set(
+        notifRef,
+        notif.toFirestore(_db),
+      );
 
-        final notif = NotificationModel(
-          notifId: notifRef.id,
-          receiverId: tenantId,
-          senderId: ownerId,
-          type: NotificationType.priceUpdate,
-          content: content,
-          isRead: false,
-          createdAt: now,
-          roomId: roomDoc.id,
-          roomNumber: data['number_room'] as String?,
-        );
+      // create item for each receiver
+      for (final receiverId in receiverIds) {
+        final itemRef = notifRef.collection('item').doc();
 
-        batch.set(notifRef, notif.toFirestore(_db, tenantId));
+        batch.set(itemRef, {
+          'receiver_id': _db.doc('users/$receiverId'),
+          'is_read': false,
+        });
       }
 
       await batch.commit();
+
       return null;
     } catch (e) {
-      return 'Broadcast thất bại: $e';
+      return e.toString();
     }
   }
 
-  // ── Đánh dấu đã đọc ───────────────────────────────────────────────────
-  Future<void> markAsRead(String userId, String notifId) async {
-    await _db
-        .collection('notifications')
-        .doc(userId)
-        .collection('item')
-        .doc(notifId)
-        .update({'is_read': true});
+  // ───────────────── USER NOTIFICATIONS ─────────────────
+
+  Stream<List<NotificationModel>> streamNotifications(
+    String userId,
+  ) {
+    return _db
+        .collectionGroup('item')
+        .where(
+          'receiver_id',
+          isEqualTo: _db.doc('users/$userId'),
+        )
+        .snapshots()
+        .asyncMap((snap) async {
+      List<NotificationModel> result = [];
+
+      for (final itemDoc in snap.docs) {
+        final notifDoc = await itemDoc.reference.parent.parent!.get();
+
+        if (!notifDoc.exists) continue;
+
+        result.add(
+          NotificationModel.fromDoc(
+            notifDoc,
+          ),
+        );
+      }
+
+      result.sort(
+        (a, b) => b.createdAt.compareTo(
+          a.createdAt,
+        ),
+      );
+
+      return result;
+    });
   }
 
-  // ── Đánh dấu tất cả đã đọc ───────────────────────────────────────────
-  Future<void> markAllAsRead(String userId) async {
-    final snap = await _db
+  // ───────────────── MARK AS READ ─────────────────
+
+  Future<void> markAsRead({
+    required String userId,
+    required String notificationId,
+  }) async {
+    final itemSnap = await _db
         .collection('notifications')
-        .doc(userId)
+        .doc(notificationId)
         .collection('item')
-        .where('is_read', isEqualTo: false)
+        .where(
+          'receiver_id',
+          isEqualTo: _db.doc('users/$userId'),
+        )
+        .limit(1)
+        .get();
+
+    if (itemSnap.docs.isEmpty) return;
+
+    await itemSnap.docs.first.reference.update({
+      'is_read': true,
+    });
+  }
+
+  // ───────────────── MARK ALL AS READ ─────────────────
+
+  Future<void> markAllAsRead(
+    String userId,
+  ) async {
+    final snap = await _db
+        .collectionGroup('item')
+        .where(
+          'receiver_id',
+          isEqualTo: _db.doc('users/$userId'),
+        )
+        .where(
+          'is_read',
+          isEqualTo: false,
+        )
         .get();
 
     final batch = _db.batch();
+
     for (final doc in snap.docs) {
-      batch.update(doc.reference, {'is_read': true});
+      batch.update(doc.reference, {
+        'is_read': true,
+      });
     }
+
     await batch.commit();
   }
 
-  // ── Số thông báo chưa đọc ─────────────────────────────────────────────
-  Stream<int> streamUnreadCount(String userId) {
+  // ───────────────── UNREAD COUNT ─────────────────
+
+  Stream<int> streamUnreadCount(
+    String userId,
+  ) {
     return _db
-        .collection('notifications')
-        .doc(userId)
-        .collection('item')
-        .where('is_read', isEqualTo: false)
+        .collectionGroup('item')
+        .where(
+          'receiver_id',
+          isEqualTo: _db.doc('users/$userId'),
+        )
+        .where(
+          'is_read',
+          isEqualTo: false,
+        )
         .snapshots()
-        .map((snap) => snap.size);
+        .map(
+          (snap) => snap.size,
+        );
+  }
+
+  // ───────────────── DELETE ─────────────────
+
+  Future<void> deleteNotification(
+    String notificationId,
+  ) async {
+    final itemSnap = await _db
+        .collection('notifications')
+        .doc(notificationId)
+        .collection('item')
+        .get();
+
+    final batch = _db.batch();
+
+    for (final doc in itemSnap.docs) {
+      batch.delete(doc.reference);
+    }
+
+    batch.delete(
+      _db.collection('notifications').doc(notificationId),
+    );
+
+    await batch.commit();
   }
 }
