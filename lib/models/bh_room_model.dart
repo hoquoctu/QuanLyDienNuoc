@@ -7,20 +7,23 @@ enum BhRoomStatus {
   inactive, // key: inactive
 }
 
-/// Model phòng trọ — map collection `room` trên Firestore
-/// boardingHouse_id lưu dạng DocumentReference
 class BhRoomModel {
   final String bhRoomId;
   final String bhId;
   String bhRoomNumber;
   BhRoomStatus bhRoomStatus;
 
+  // Tenant — lưu dạng reference uid, null nếu không có ai thuê
   String? bhRoomTenantId;
   String? bhRoomTenantName;
-  String? bhRoomJoinCode;
-  DateTime? bhRoomJoinCodeExpiry;
-  DateTime? bhRoomTenantSince;
+  // Join code
+  String? bhRoomCode; // code: string|null
+  DateTime? bhRoomTimeStart; // time_start: timestamp|null (lúc tạo mã)
 
+  // Thời điểm cập nhật
+  DateTime? bhRoomUpdateTime; // update_time: timestamp
+
+  // Chỉ số điện nước (giữ lại cho sau)
   double bhRoomLastElec;
   double bhRoomLastWater;
 
@@ -31,24 +34,30 @@ class BhRoomModel {
     this.bhRoomStatus = BhRoomStatus.empty,
     this.bhRoomTenantId,
     this.bhRoomTenantName,
-    this.bhRoomJoinCode,
-    this.bhRoomJoinCodeExpiry,
-    this.bhRoomTenantSince,
+    this.bhRoomCode,
+    this.bhRoomTimeStart,
+    this.bhRoomUpdateTime,
     this.bhRoomLastElec = 0,
     this.bhRoomLastWater = 0,
   });
 
-  bool get isBhRoomJoinCodeValid =>
-      bhRoomJoinCode != null &&
-      bhRoomJoinCodeExpiry != null &&
-      DateTime.now().isBefore(bhRoomJoinCodeExpiry!);
+  // Code còn hiệu lực không (30 phút kể từ time_start)
+  bool get isBhRoomCodeValid {
+    if (bhRoomCode == null || bhRoomTimeStart == null) return false;
+    final expiry = bhRoomTimeStart!.add(const Duration(seconds: 10));
+    return DateTime.now().isBefore(expiry);
+  }
+
+  // Thời gian hết hạn (để đếm ngược)
+  DateTime? get bhRoomCodeExpiry =>
+      bhRoomTimeStart?.add(const Duration(seconds: 10));
 
   // ── Từ Firestore doc ───────────────────────────────────────────────────
   factory BhRoomModel.fromDoc(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
 
-    // boardingHouse_id là DocumentReference
-    final bhRef = d['boardingHouse_id'];
+    // boarding_house: DocumentReference
+    final bhRef = d['boarding_house'];
     String bhId = '';
     if (bhRef is DocumentReference) {
       bhId = bhRef.id;
@@ -56,25 +65,34 @@ class BhRoomModel {
       bhId = bhRef.split('/').last;
     }
 
-    // status_id là DocumentReference: /status/available | /status/occupied ...
-    final statusRef = d['status_id'];
+    // status: DocumentReference → /status/available | occupied | pending | inactive
+    final statusRef = d['status'];
     String statusKey = 'available';
     if (statusRef is DocumentReference) {
-      statusKey = statusRef.id; // lấy document ID = key
+      statusKey = statusRef.id;
     } else if (statusRef is String) {
       statusKey = statusRef.split('/').last;
+    }
+
+    // tenant_id: DocumentReference|null → lấy uid
+    final tenantRef = d['tenant_id'];
+    String? tenantId;
+    if (tenantRef is DocumentReference) {
+      tenantId = tenantRef.id;
+    } else if (tenantRef is String) {
+      tenantId = tenantRef.split('/').last;
     }
 
     return BhRoomModel(
       bhRoomId: doc.id,
       bhId: bhId,
-      bhRoomNumber: d['room_number'] ?? '',
+      bhRoomNumber: d['number_room'] ?? '',
       bhRoomStatus: _statusFromKey(statusKey),
-      bhRoomTenantId: d['tenant_id'],
+      bhRoomTenantId: tenantId,
       bhRoomTenantName: d['tenant_name'],
-      bhRoomJoinCode: d['join_code'],
-      bhRoomJoinCodeExpiry: (d['join_code_expiry'] as Timestamp?)?.toDate(),
-      bhRoomTenantSince: (d['tenant_since'] as Timestamp?)?.toDate(),
+      bhRoomCode: d['code'],
+      bhRoomTimeStart: (d['time_start'] as Timestamp?)?.toDate(),
+      bhRoomUpdateTime: (d['update_time'] as Timestamp?)?.toDate(),
       bhRoomLastElec: (d['last_elec_reading'] ?? 0).toDouble(),
       bhRoomLastWater: (d['last_water_reading'] ?? 0).toDouble(),
     );
@@ -82,21 +100,22 @@ class BhRoomModel {
 
   // ── Ghi lên Firestore ──────────────────────────────────────────────────
   Map<String, dynamic> toFirestore(FirebaseFirestore db) => {
-        'room_number': bhRoomNumber,
-        'boardingHouse_id': db.doc('boardingHouse/$bhId'),
-        'status_id': db.doc('status/${statusToKey(bhRoomStatus)}'),
-        if (bhRoomTenantId != null) 'tenant_id': bhRoomTenantId,
-        if (bhRoomTenantName != null) 'tenant_name': bhRoomTenantName,
-        if (bhRoomJoinCode != null) 'join_code': bhRoomJoinCode,
-        if (bhRoomJoinCodeExpiry != null)
-          'join_code_expiry': Timestamp.fromDate(bhRoomJoinCodeExpiry!),
-        if (bhRoomTenantSince != null)
-          'tenant_since': Timestamp.fromDate(bhRoomTenantSince!),
+        'number_room': bhRoomNumber,
+        'boarding_house': db.doc('boardingHouse/$bhId'),
+        'status': db.doc('status/${statusToKey(bhRoomStatus)}'),
+        'tenant_id':
+            bhRoomTenantId != null ? db.doc('users/$bhRoomTenantId') : null,
+        'tenant_name': bhRoomTenantName,
+        'code': bhRoomCode,
+        'time_start': bhRoomTimeStart != null
+            ? Timestamp.fromDate(bhRoomTimeStart!)
+            : null,
+        'update_time': Timestamp.fromDate(bhRoomUpdateTime ?? DateTime.now()),
         'last_elec_reading': bhRoomLastElec,
         'last_water_reading': bhRoomLastWater,
       };
 
-  // ── Key mapping — khớp với StatusCache type=room ───────────────────────
+  // ── Key mapping ────────────────────────────────────────────────────────
   static BhRoomStatus _statusFromKey(String key) {
     switch (key) {
       case 'occupied':
@@ -105,12 +124,11 @@ class BhRoomModel {
         return BhRoomStatus.pending;
       case 'inactive':
         return BhRoomStatus.inactive;
-      default: // 'available'
+      default:
         return BhRoomStatus.empty;
     }
   }
 
-  /// Dùng bởi StatusBadge và toFirestore
   static String statusToKey(BhRoomStatus s) {
     switch (s) {
       case BhRoomStatus.occupied:
