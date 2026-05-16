@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bh_room_provider.dart';
+import '../../services/CloudinaryUpload.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bottom_sheet_confirm.dart';
 import '../../widgets/custom_text_field.dart';
@@ -15,6 +18,7 @@ class SettingsUserScreen extends StatefulWidget {
 
 class _SettingsUserScreenState extends State<SettingsUserScreen> {
   bool _editMode = false;
+  bool _uploadingAvatar = false;
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
 
@@ -35,9 +39,47 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
 
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
-    final xfile = await picker.pickImage(source: ImageSource.gallery);
-    if (xfile != null && mounted) {
-      await context.read<AuthProvider>().updateProfile(avatar: xfile.path);
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    if (xfile == null || !mounted) return;
+
+    setState(() => _uploadingAvatar = true);
+
+    try {
+      final url = await uploadToCloudinary(File(xfile.path));
+      if (url != null && mounted) {
+        await context.read<AuthProvider>().updateProfile(avatar: url);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đã cập nhật ảnh đại diện!'),
+              backgroundColor: AppTheme.successColor,
+            ),
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Upload ảnh thất bại. Vui lòng thử lại.'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
     }
   }
 
@@ -94,15 +136,39 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
                     CircleAvatar(
                       radius: 52,
                       backgroundColor: AppTheme.primary.withOpacity(0.15),
-                      child: Text(
-                        user.name.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(
-                            color: AppTheme.primary,
-                            fontSize: 40,
-                            fontWeight: FontWeight.w800),
-                      ),
+                      backgroundImage: user.avatar != null && user.avatar!.startsWith('http')
+                          ? NetworkImage(user.avatar!)
+                          : null,
+                      child: user.avatar != null && user.avatar!.startsWith('http')
+                          ? null
+                          : Text(
+                              user.name.substring(0, 1).toUpperCase(),
+                              style: const TextStyle(
+                                  color: AppTheme.primary,
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.w800),
+                            ),
                     ),
-                    if (_editMode)
+                    if (_uploadingAvatar)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black38,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (_editMode && !_uploadingAvatar)
                       Positioned(
                         right: 0,
                         bottom: 0,
