@@ -46,6 +46,7 @@ class BillModel {
   final BillItemModel water;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? roomNumberName;  // "P1404" etc.
 
   const BillModel({
     required this.id,
@@ -59,6 +60,7 @@ class BillModel {
     required this.water,
     required this.createdAt,
     required this.updatedAt,
+    this.roomNumberName,
   });
 
   // Tháng / năm tiện dụng
@@ -106,6 +108,7 @@ class BillModel {
           (d['water'] as Map<String, dynamic>?) ?? {}),
       createdAt: (d['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (d['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      roomNumberName: d['room_number_name'],
     );
   }
 

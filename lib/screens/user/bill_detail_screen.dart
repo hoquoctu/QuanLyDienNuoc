@@ -89,7 +89,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
             // Upload ảnh chuyển khoản lên Cloudinary nếu có
             if (selectedMethod == 'transfer' && transferFile != null) {
-              final url = await uploadToCloudinary(transferFile!);
+              final url = await uploadToCloudinary(transferFile!, folder: 'Room_Zy/payments');
               if (url == null) {
                 setSheetState(() {
                   uploading = false;

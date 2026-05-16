@@ -97,16 +97,15 @@ class BoardingHouseService {
         .map((snap) => snap.docs.map((d) => BhRoomModel.fromDoc(d)).toList());
   }
 
-  /// Stream phòng của người thuê (theo tenant_id reference)
-  Stream<BhRoomModel?> streamRoomByTenant(String tenantUid) {
+  /// Stream tất cả phòng của người thuê (theo tenant_id reference)
+  Stream<List<BhRoomModel>> streamRoomsByTenant(String tenantUid) {
     final tenantRef = _db.doc('users/$tenantUid');
     return _db
         .collection('room')
         .where('tenant_id', isEqualTo: tenantRef)
-        .limit(1)
         .snapshots()
         .map((snap) =>
-            snap.docs.isEmpty ? null : BhRoomModel.fromDoc(snap.docs.first));
+            snap.docs.map((d) => BhRoomModel.fromDoc(d)).toList());
   }
 
   /// Lấy thông tin dãy trọ theo ID

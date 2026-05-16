@@ -5,64 +5,99 @@ import '../models/bh_room_model.dart';
 import '../models/boarding_house_model.dart';
 import '../services/manager/boarding_house_service.dart';
 
-/// Provider dành cho USER — stream phòng trọ của họ từ Firestore
+/// Provider dành cho USER — stream DANH SÁCH phòng trọ từ Firestore
 /// (theo tenant_id reference) kèm thông tin dãy trọ (boardingHouse)
 class BhRoomProvider extends ChangeNotifier {
   final _svc = BoardingHouseService.instance;
 
   // ── State ────────────────────────────────────────────────────────────────
-  BhRoomModel? _room;
-  BhRoomModel? _previousRoom; // lưu trạng thái phòng trước đó
-  BoardingHouseModel? _boardingHouse;
+  List<BhRoomModel> _rooms = [];
+  List<BhRoomModel> _previousRooms = [];
+  Map<String, BoardingHouseModel> _boardingHouses = {};
   bool _loading = false;
   String? _error;
-  bool _wasCancelledByOwner = false; // chủ trọ vừa hủy yêu cầu
+  bool _wasCancelledByOwner = false;
 
-  BhRoomModel? get room => _room;
-  BoardingHouseModel? get boardingHouse => _boardingHouse;
+  // ── Getters ──────────────────────────────────────────────────────────────
+  List<BhRoomModel> get rooms => _rooms;
+
+  /// Phòng đang thuê (occupied)
+  List<BhRoomModel> get activeRooms =>
+      _rooms.where((r) => r.bhRoomStatus == BhRoomStatus.occupied).toList();
+
+  /// Phòng đang chờ xác nhận (waiting)
+  List<BhRoomModel> get waitingRooms =>
+      _rooms.where((r) => r.bhRoomStatus == BhRoomStatus.waiting).toList();
+
+  /// Có ít nhất 1 phòng occupied?
+  bool get hasRoom => activeRooms.isNotEmpty;
+
+  /// Backward compat: phòng đầu tiên (nếu chỉ có 1)
+  BhRoomModel? get room => _rooms.isNotEmpty ? _rooms.first : null;
+
+  /// Lấy boardingHouse theo bhId
+  BoardingHouseModel? boardingHouseFor(String bhId) => _boardingHouses[bhId];
+
+  /// Backward compat: boardingHouse của phòng đầu tiên
+  BoardingHouseModel? get boardingHouse =>
+      room != null ? _boardingHouses[room!.bhId] : null;
+
   bool get loading => _loading;
   String? get error => _error;
   bool get wasCancelledByOwner => _wasCancelledByOwner;
 
-  /// Gọi sau khi UI đã hiển thị thông báo hủy
   void clearCancelledFlag() {
     _wasCancelledByOwner = false;
-    // không notifyListeners để tránh rebuild thừa
   }
 
   // ── Streams ──────────────────────────────────────────────────────────────
-  StreamSubscription<BhRoomModel?>? _roomSub;
-  StreamSubscription<BoardingHouseModel?>? _bhSub;
+  StreamSubscription<List<BhRoomModel>>? _roomSub;
+  final Map<String, StreamSubscription<BoardingHouseModel?>> _bhSubs = {};
 
   String? _currentTenantUid;
 
   // ── Init cho user ─────────────────────────────────────────────────────
   void initForUser(String tenantUid) {
-    if (_currentTenantUid == tenantUid) return; // tránh re-init không cần thiết
+    if (_currentTenantUid == tenantUid) return;
     _currentTenantUid = tenantUid;
     _disposeStreams();
     _loading = true;
     _error = null;
     notifyListeners();
 
-    _roomSub = _svc.streamRoomByTenant(tenantUid).listen(
-      (room) async {
-        // Detect chủ trọ hủy: phòng đang waiting → bỗng mất (null)
-        if (_previousRoom?.bhRoomStatus == BhRoomStatus.waiting && room == null) {
-          _wasCancelledByOwner = true;
+    _roomSub = _svc.streamRoomsByTenant(tenantUid).listen(
+      (rooms) {
+        // Detect chủ trọ hủy: phòng waiting biến mất
+        for (final prev in _previousRooms) {
+          if (prev.bhRoomStatus == BhRoomStatus.waiting) {
+            final stillExists = rooms.any((r) => r.bhRoomId == prev.bhRoomId);
+            if (!stillExists) {
+              _wasCancelledByOwner = true;
+              break;
+            }
+          }
         }
-        _previousRoom = _room;
-        _room = room;
+
+        _previousRooms = List.from(_rooms);
+        _rooms = rooms;
         _loading = false;
 
-        // Nếu có phòng, subscribe thêm thông tin dãy trọ
-        if (room != null && room.bhId.isNotEmpty) {
-          _subscribeBh(room.bhId);
-        } else {
-          _bhSub?.cancel();
-          _bhSub = null;
-          _boardingHouse = null;
+        // Subscribe boarding house info cho mỗi phòng
+        final bhIds = rooms.map((r) => r.bhId).where((id) => id.isNotEmpty).toSet();
+        // Hủy sub cũ không còn cần
+        final toRemove = _bhSubs.keys.where((id) => !bhIds.contains(id)).toList();
+        for (final id in toRemove) {
+          _bhSubs[id]?.cancel();
+          _bhSubs.remove(id);
+          _boardingHouses.remove(id);
         }
+        // Subscribe mới
+        for (final bhId in bhIds) {
+          if (!_bhSubs.containsKey(bhId)) {
+            _subscribeBh(bhId);
+          }
+        }
+
         notifyListeners();
       },
       onError: (e) {
@@ -74,19 +109,22 @@ class BhRoomProvider extends ChangeNotifier {
   }
 
   void _subscribeBh(String bhId) {
-    _bhSub?.cancel();
-    _bhSub = _svc.streamBoardingHouseById(bhId).listen(
+    _bhSubs[bhId]?.cancel();
+    _bhSubs[bhId] = _svc.streamBoardingHouseById(bhId).listen(
       (bh) {
-        _boardingHouse = bh;
+        if (bh != null) {
+          _boardingHouses[bhId] = bh;
+        } else {
+          _boardingHouses.remove(bhId);
+        }
         notifyListeners();
       },
-      onError: (_) {}, // lỗi nhỏ, bỏ qua
+      onError: (_) {},
     );
   }
 
   // ── Join room bằng code ─────────────────────────────────────────────────
   Future<String?> joinRoomByCode(String code, String tenantUid, String tenantName) async {
-    // Tìm phòng có code khớp và còn hiệu lực
     try {
       final db = _svc.db;
       final snap = await db
@@ -128,20 +166,22 @@ class BhRoomProvider extends ChangeNotifier {
   void reset() {
     _disposeStreams();
     _currentTenantUid = null;
-    _room = null;
-    _previousRoom = null;
-    _boardingHouse = null;
+    _rooms = [];
+    _previousRooms = [];
+    _boardingHouses = {};
     _loading = false;
     _error = null;
     _wasCancelledByOwner = false;
-     notifyListeners();
+    notifyListeners();
   }
 
   void _disposeStreams() {
     _roomSub?.cancel();
     _roomSub = null;
-    _bhSub?.cancel();
-    _bhSub = null;
+    for (final sub in _bhSubs.values) {
+      sub.cancel();
+    }
+    _bhSubs.clear();
   }
 
   @override
