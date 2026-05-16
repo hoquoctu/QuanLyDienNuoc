@@ -142,7 +142,36 @@ class _RoomTileState extends State<RoomTile> {
             }
           },
         );
-      //phòng đang chờ xác nhận
+      //phòng đang chờ xác nhận (user đã gửi yêu cầu)
+      case BhRoomStatus.waiting:
+        return PendingRoomExpanded(
+          room: room,
+          onConfirm: () async {
+            final ok = await showConfirmSheet<bool>(
+              context,
+              title: 'Xác nhận cho thuê',
+              subtitle:
+                  'Xác nhận cho ${room.bhRoomTenantName} vào phòng ${room.bhRoomNumber}?',
+              confirmLabel: 'Xác nhận',
+            );
+            if (ok == true && context.mounted) {
+              // TODO: confirm tenant
+            }
+          },
+          onReject: () async {
+            final ok = await showConfirmSheet<bool>(
+              context,
+              title: 'Từ chối',
+              subtitle: 'Từ chối yêu cầu của ${room.bhRoomTenantName}?',
+              confirmLabel: 'Từ chối',
+              confirmColor: AppTheme.errorColor,
+            );
+            if (ok == true && context.mounted) {
+              // TODO: reject tenant
+            }
+          },
+        );
+      //phòng đang chờ xác nhận (pending — dự phòng)
       case BhRoomStatus.pending:
         return PendingRoomExpanded(
           room: room,
@@ -241,12 +270,15 @@ class _RoomNumberBox extends StatelessWidget {
     switch (s) {
       case BhRoomStatus.occupied:
         return AppTheme.successColor;
+      case BhRoomStatus.waiting:
+        return AppTheme.warningColor;
       case BhRoomStatus.pending:
         return AppTheme.primary;
       case BhRoomStatus.empty:
         return AppTheme.textSecondary;
       case BhRoomStatus.inactive:
         return AppTheme.errorColor;
+
     }
   }
 }

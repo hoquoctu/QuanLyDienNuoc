@@ -37,6 +37,8 @@ class StatusBadge extends StatelessWidget {
     switch (s) {
       case BhRoomStatus.occupied:
         return AppTheme.successColor;
+      case BhRoomStatus.waiting:
+        return const Color(0xFFF59E0B); // amber — chờ xác nhận
       case BhRoomStatus.pending:
         return AppTheme.primary;
       case BhRoomStatus.empty:

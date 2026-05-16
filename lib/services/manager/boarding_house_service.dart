@@ -8,6 +8,7 @@ class BoardingHouseService {
   static final BoardingHouseService instance = BoardingHouseService._();
 
   final _db = FirebaseFirestore.instance;
+  FirebaseFirestore get db => _db;
 
   // ── DÃY TRỌ ──────────────────────────────────────────────────────────────
 
@@ -96,6 +97,34 @@ class BoardingHouseService {
         .map((snap) => snap.docs.map((d) => BhRoomModel.fromDoc(d)).toList());
   }
 
+  /// Stream phòng của người thuê (theo tenant_id reference)
+  Stream<BhRoomModel?> streamRoomByTenant(String tenantUid) {
+    final tenantRef = _db.doc('users/$tenantUid');
+    return _db
+        .collection('room')
+        .where('tenant_id', isEqualTo: tenantRef)
+        .limit(1)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.isEmpty ? null : BhRoomModel.fromDoc(snap.docs.first));
+  }
+
+  /// Lấy thông tin dãy trọ theo ID
+  Future<BoardingHouseModel?> fetchBoardingHouseById(String bhId) async {
+    final doc = await _db.collection('boardingHouse').doc(bhId).get();
+    if (!doc.exists) return null;
+    return BoardingHouseModel.fromDoc(doc);
+  }
+
+  /// Stream thông tin dãy trọ theo ID
+  Stream<BoardingHouseModel?> streamBoardingHouseById(String bhId) {
+    return _db
+        .collection('boardingHouse')
+        .doc(bhId)
+        .snapshots()
+        .map((doc) => doc.exists ? BoardingHouseModel.fromDoc(doc) : null);
+  }
+
   Future<String?> addRoom({
     required String bhId,
     required String roomNumber,
@@ -138,7 +167,7 @@ class BoardingHouseService {
       if (data != null) {
         final timeStart = (data['time_start'] as Timestamp?)?.toDate();
         if (timeStart != null) {
-          final expiry = timeStart.add(const Duration(seconds: 10));
+          final expiry = timeStart.add(const Duration(minutes: 30));
           if (DateTime.now().isBefore(expiry)) {
             return 'Mã hiện tại vẫn còn hiệu lực';
           }

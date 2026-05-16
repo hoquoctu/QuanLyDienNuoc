@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/bh_room_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bottom_sheet_confirm.dart';
 import '../../widgets/custom_text_field.dart';
@@ -233,6 +234,8 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
                     confirmColor: AppTheme.errorColor,
                   );
                   if (ok == true && context.mounted) {
+                    // Reset dữ liệu phòng trước khi logout
+                    context.read<BhRoomProvider>().reset();
                     await context.read<AuthProvider>().logout();
                   }
                 },

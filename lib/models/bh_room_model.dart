@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum BhRoomStatus {
-  empty, // key: available
-  occupied, // key: occupied
-  pending, // key: pending
-  inactive, // key: inactive
+  empty,    // key: available  — phòng trống
+  occupied, // key: occupied   — đang có người thuê
+  waiting,  // key: waiting    — chờ chủ trọ xác nhận vào phòng
+  pending,  // key: pending    — (dự phòng, không dùng cho room)
+  inactive, // key: inactive   — ngưng hoạt động
 }
 
 class BhRoomModel {
@@ -44,13 +45,13 @@ class BhRoomModel {
   // Code còn hiệu lực không (30 phút kể từ time_start)
   bool get isBhRoomCodeValid {
     if (bhRoomCode == null || bhRoomTimeStart == null) return false;
-    final expiry = bhRoomTimeStart!.add(const Duration(seconds: 10));
+    final expiry = bhRoomTimeStart!.add(const Duration(minutes: 30));
     return DateTime.now().isBefore(expiry);
   }
 
   // Thời gian hết hạn (để đếm ngược)
   DateTime? get bhRoomCodeExpiry =>
-      bhRoomTimeStart?.add(const Duration(seconds: 10));
+      bhRoomTimeStart?.add(const Duration(minutes: 30));
 
   // ── Từ Firestore doc ───────────────────────────────────────────────────
   factory BhRoomModel.fromDoc(DocumentSnapshot doc) {
@@ -120,6 +121,9 @@ class BhRoomModel {
     switch (key) {
       case 'occupied':
         return BhRoomStatus.occupied;
+      case 'roompending': // key thực tế trên Firestore
+      case 'waiting':     // alias (backward compat)
+        return BhRoomStatus.waiting;
       case 'pending':
         return BhRoomStatus.pending;
       case 'inactive':
@@ -133,6 +137,8 @@ class BhRoomModel {
     switch (s) {
       case BhRoomStatus.occupied:
         return 'occupied';
+      case BhRoomStatus.waiting:
+        return 'roompending'; // đồng bộ với Firestore
       case BhRoomStatus.pending:
         return 'pending';
       case BhRoomStatus.inactive:
