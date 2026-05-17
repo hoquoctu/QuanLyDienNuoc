@@ -75,6 +75,37 @@ class BoardingHouseService {
       return 'Cập nhật thất bại: $e';
     }
   }
+// ── XÁC NHẬN / TỪ CHỐI TENANT ────────────────────────────────────────────
+
+  Future<String?> confirmTenant(String roomId) async {
+    try {
+      await _db.collection('room').doc(roomId).update({
+        'status': _db.doc('status/occupied'),
+        'code': null,
+        'time_start': null,
+        'update_time': Timestamp.fromDate(DateTime.now()),
+      });
+      return null;
+    } catch (e) {
+      return 'Xác nhận thất bại: $e';
+    }
+  }
+
+  Future<String?> rejectTenant(String roomId) async {
+    try {
+      await _db.collection('room').doc(roomId).update({
+        'status': _db.doc('status/available'),
+        'tenant_id': null,
+        'tenant_name': null,
+        'code': null,
+        'time_start': null,
+        'update_time': Timestamp.fromDate(DateTime.now()),
+      });
+      return null;
+    } catch (e) {
+      return 'Từ chối thất bại: $e';
+    }
+  }
 
   /// Xóa dãy trọ:
   /// - Nếu tất cả phòng đều không có bill → xóa thẳng toàn bộ phòng + dãy

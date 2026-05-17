@@ -7,6 +7,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quanlydiennc_app/models/bh_room_model.dart';
+import 'package:quanlydiennc_app/models/notification_model.dart';
+import 'package:quanlydiennc_app/providers/auth_provider.dart';
 import 'package:quanlydiennc_app/providers/boarding_house_provider.dart';
 import 'package:quanlydiennc_app/services/manager/unlink_request_service.dart';
 import 'package:quanlydiennc_app/theme/app_theme.dart';
@@ -16,6 +18,7 @@ import './EmptyRoomExpanded.dart';
 import './OccupiedRoomExpanded.dart';
 import '../../../../theme/StatusBadge.dart';
 import '../../../../widgets/bottom_sheet_confirm.dart';
+import '../../../../services/manager/notification_service.dart';
 
 class RoomTile extends StatefulWidget {
   final BhRoomModel room;
@@ -165,7 +168,7 @@ class _RoomTileState extends State<RoomTile> {
           },
         );
 
-      case BhRoomStatus.pending:
+      case BhRoomStatus.roompending:
         return PendingRoomExpanded(
           room: room,
           onConfirm: () async {
@@ -177,7 +180,31 @@ class _RoomTileState extends State<RoomTile> {
               confirmLabel: 'Xác nhận',
             );
             if (ok == true && context.mounted) {
-              // TODO: confirm tenant
+              final provider = context.read<BoardingHouseProvider>();
+              final notifSvc = NotificationService.instance;
+              final ownerUid = context
+                  .read<AuthProvider>()
+                  .currentUser!
+                  .uid; // hoặc lấy từ đâu mày đang dùng
+
+              final err = await provider.confirmTenant(room.bhRoomId);
+              if (err != null && context.mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+                return;
+              }
+
+              // Gửi thông báo cho tenant
+              if (room.bhRoomTenantId != null) {
+                await notifSvc.createNotification(
+                  receiverId: room.bhRoomTenantId!,
+                  senderId: ownerUid,
+                  type:
+                      NotificationType.system, // đổi type phù hợp với enum mày
+                  content:
+                      'Yêu cầu thuê phòng ${room.bhRoomNumber} của bạn đã được chấp nhận!',
+                );
+              }
             }
           },
           onReject: () async {
@@ -189,7 +216,28 @@ class _RoomTileState extends State<RoomTile> {
               confirmColor: AppTheme.errorColor,
             );
             if (ok == true && context.mounted) {
-              // TODO: reject tenant
+              final provider = context.read<BoardingHouseProvider>();
+              final notifSvc = NotificationService.instance;
+              final ownerUid = context.read<AuthProvider>().currentUser!.uid;
+
+              final tenantId =
+                  room.bhRoomTenantId; // lưu trước vì sau reject sẽ null
+              final err = await provider.rejectTenant(room.bhRoomId);
+              if (err != null && context.mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+                return;
+              }
+
+              if (tenantId != null) {
+                await notifSvc.createNotification(
+                  receiverId: tenantId,
+                  senderId: ownerUid,
+                  type: NotificationType.system,
+                  content:
+                      'Yêu cầu thuê phòng ${room.bhRoomNumber} của bạn đã bị từ chối.',
+                );
+              }
             }
           },
         );
@@ -301,8 +349,8 @@ class _RoomNumberBox extends StatelessWidget {
     switch (s) {
       case BhRoomStatus.occupied:
         return AppTheme.successColor;
-      case BhRoomStatus.pending:
-        return AppTheme.primary;
+      case BhRoomStatus.roompending:
+        return const Color.fromARGB(255, 58, 59, 63);
       case BhRoomStatus.available:
         return AppTheme.textSecondary;
       case BhRoomStatus.inactive:

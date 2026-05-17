@@ -18,8 +18,7 @@ class RoomBlockListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ownerUid = context.read<AuthProvider>().currentUser!.uid;
     final provider = context.watch<BoardingHouseProvider>();
-    print("=== provider ===");
-    print(provider);
+
     final bhList = provider.bhList;
 
     return Scaffold(
@@ -42,7 +41,9 @@ class RoomBlockListScreen extends StatelessWidget {
               ? BhEmptyState(
                   onAdd: () => _showAddBhSheet(context, ownerUid),
                 )
-              : _BhListView(bhList: bhList, ownerUid: ownerUid),
+              : SingleChildScrollView(
+                  physics: BouncingScrollPhysics(),
+                  child: _BhListView(bhList: bhList, ownerUid: ownerUid)),
     );
   }
 
@@ -71,6 +72,8 @@ class _BhListView extends StatelessWidget {
     final provider = context.watch<BoardingHouseProvider>();
 
     return ListView.separated(
+      physics: NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
       padding: const EdgeInsets.all(16),
       itemCount: bhList.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),

@@ -62,6 +62,11 @@ class BoardingHouseProvider extends ChangeNotifier {
     );
   }
 
+  //xác nhận và từ chối
+  Future<String?> confirmTenant(String roomId) => _svc.confirmTenant(roomId);
+
+  Future<String?> rejectTenant(String roomId) => _svc.rejectTenant(roomId);
+
   // ── CRUD dãy trọ ─────────────────────────────────────────────────────
   Future<String?> addBh({
     required String ownerUid,
@@ -122,6 +127,11 @@ class BoardingHouseProvider extends ChangeNotifier {
     _roomSubs.clear();
     _roomMap.clear();
     _bhList = [];
+  }
+
+  void clearData() {
+    _disposeStreams(); // đã có sẵn, clear hết stream + data
+    notifyListeners();
   }
 
   Future<void> updateLastReading({

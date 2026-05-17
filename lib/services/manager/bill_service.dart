@@ -44,10 +44,7 @@ class BillService {
       }
 
       // status unpaid
-      final unpaidStatus = await StatusService.getStatusRef(
-        type: 'payment',
-        key: 'unpaid',
-      );
+      final unpaidStatus = _db.doc('status/unpaid');
 
       // tính điện nước
       final electricUsed = newElectric - oldElectric;
@@ -67,6 +64,12 @@ class BillService {
         idRoom: roomRef,
         idTenant: _db.doc('users/$tenantId'),
         month: month,
+        roomNumberName: roomNumber,
+        nameTenant: await _db
+            .collection('users')
+            .doc(tenantId)
+            .get()
+            .then((value) => value.data()!['name']),
         status: unpaidStatus,
         total: total,
         electric: UtilityData(

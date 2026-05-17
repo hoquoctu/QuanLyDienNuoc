@@ -48,6 +48,8 @@ class BillModel {
   final DocumentReference idOwner;
   final DocumentReference idRoom;
   final DocumentReference idTenant;
+  final String roomNumberName;
+  final String nameTenant;
 
   /// yyyy-MM
   final String month;
@@ -67,6 +69,8 @@ class BillModel {
     required this.idOwner,
     required this.idRoom,
     required this.idTenant,
+    required this.roomNumberName,
+    required this.nameTenant,
     required this.month,
     required this.status,
     required this.total,
@@ -81,6 +85,8 @@ class BillModel {
       'id_owner': idOwner,
       'id_room': idRoom,
       'id_tenant': idTenant,
+      'room_number_name': roomNumberName,
+      'name_tenant': nameTenant,
       'month': month,
       'status': status,
       'total': total,
@@ -99,6 +105,8 @@ class BillModel {
       idOwner: map['id_owner'],
       idRoom: map['id_room'],
       idTenant: map['id_tenant'],
+      roomNumberName: map['room_number_name'] ?? '',
+      nameTenant: map['name_tenant'] ?? '',
       month: map['month'] ?? '',
       status: map['status'],
       total: (map['total'] ?? 0).toDouble(),

@@ -41,93 +41,59 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
       body: Column(
         children: [
           // FILTER
+          // thay phần FILTER hiện tại
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 10,
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.filter_list,
-                    color: AppTheme.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Tháng:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(Icons.filter_list,
+                    color: AppTheme.primary, size: 20),
+                const SizedBox(width: 8),
+                // Month picker
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _selectedMonth,
+                    decoration: const InputDecoration(
+                      labelText: 'Tháng',
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  ...List.generate(
-                    5,
-                    (i) {
-                      final now = DateTime.now();
-
-                      final m = DateTime(
-                        now.year,
-                        now.month - i,
-                      );
-
-                      final active =
-                          m.month == _selectedMonth && m.year == _selectedYear;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          right: 8,
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedMonth = m.month;
-                              _selectedYear = m.year;
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(
-                              milliseconds: 200,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: active
-                                  ? AppTheme.primary
-                                  : const Color(
-                                      0xFFF1F5F9,
-                                    ),
-                              borderRadius: BorderRadius.circular(
-                                20,
-                              ),
-                            ),
-                            child: Text(
-                              DateFormat(
-                                'MM/yyyy',
-                              ).format(m),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: active
-                                    ? Colors.white
-                                    : AppTheme.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
+                    items: List.generate(12, (i) => i + 1)
+                        .map((m) => DropdownMenuItem(
+                              value: m,
+                              child: Text('Tháng $m'),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _selectedMonth = v);
                     },
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 12),
+                // Year picker
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _selectedYear,
+                    decoration: const InputDecoration(
+                      labelText: 'Năm',
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: List.generate(3, (i) => DateTime.now().year - i)
+                        .map((y) => DropdownMenuItem(
+                              value: y,
+                              child: Text('$y'),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _selectedYear = v);
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
-
           // DATA
           Expanded(
             child: StreamBuilder<List<BillModel>>(
@@ -266,7 +232,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                                         ),
                                       ),
                                       child: Text(
-                                        bill.idRoom.id,
+                                        bill.roomNumberName,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w800,
                                           color: AppTheme.primary,
@@ -305,14 +271,14 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Điện: ${bill.electric.used.toStringAsFixed(0)} số',
+                                          'Điện: ${bill.electric.used.toStringAsFixed(0)} số : ${bill.electric.total.toStringAsFixed(0)}đ',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: AppTheme.textSecondary,
                                           ),
                                         ),
                                         Text(
-                                          'Nước: ${bill.water.used.toStringAsFixed(0)} m³',
+                                          'Nước: ${bill.water.used.toStringAsFixed(0)} m³ : ${bill.water.total.toStringAsFixed(0)}đ',
                                           style: const TextStyle(
                                             fontSize: 11,
                                             color: AppTheme.textHint,

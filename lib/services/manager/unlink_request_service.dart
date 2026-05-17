@@ -58,7 +58,7 @@ class UnlinkRequestService {
               bhName: bhName,
               ownerId: ownerId,
               tenantId: tenantId,
-              status: UnlinkRequestStatus.pending,
+              status: UnlinkRequestStatus.roompending,
               createdAt: now,
             ).toFirestore(_db),
           );
@@ -195,7 +195,7 @@ class UnlinkRequestService {
                 (d) => UnlinkRequestModel.fromDoc(d),
               )
               .where(
-                (e) => e.status == UnlinkRequestStatus.pending,
+                (e) => e.status == UnlinkRequestStatus.roompending,
               )
               .toList(),
         );

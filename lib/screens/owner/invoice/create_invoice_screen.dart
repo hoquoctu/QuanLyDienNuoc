@@ -158,8 +158,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       confirmLabel: 'Tạo hóa đơn',
     );
 
-    if (ok != true || !mounted) return;
-
+    if (ok != true || !mounted)
+      return;
+    else {}
     setState(() {
       _submitting = true;
     });

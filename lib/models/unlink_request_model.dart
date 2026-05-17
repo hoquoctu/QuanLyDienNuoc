@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum UnlinkRequestStatus {
-  pending, // chờ tenant xác nhận
+  roompending, // chờ tenant xác nhận
   accepted, // tenant đồng ý
   rejected, // tenant từ chối
 }
@@ -43,7 +43,7 @@ class UnlinkRequestModel {
     if (tenantRef is DocumentReference) tenantId = tenantRef.id;
 
     final statusRef = d['status'];
-    String statusKey = 'pending';
+    String statusKey = 'roompending';
     if (statusRef is DocumentReference) {
       statusKey = statusRef.id;
     } else if (statusRef is String) {
@@ -79,7 +79,7 @@ class UnlinkRequestModel {
       case 'rejected':
         return UnlinkRequestStatus.rejected;
       default:
-        return UnlinkRequestStatus.pending;
+        return UnlinkRequestStatus.roompending;
     }
   }
 
@@ -89,7 +89,7 @@ class UnlinkRequestModel {
         return 'accepted';
       case UnlinkRequestStatus.rejected:
         return 'rejected';
-      case UnlinkRequestStatus.pending:
+      case UnlinkRequestStatus.roompending:
         return 'pending';
     }
   }

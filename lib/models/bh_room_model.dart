@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum BhRoomStatus {
   available, // key: available
   occupied, // key: occupied
-  pending, // key: pending
+  roompending, // key: pending
   inactive, // key: inactive
 }
 
@@ -120,8 +120,8 @@ class BhRoomModel {
     switch (key) {
       case 'occupied':
         return BhRoomStatus.occupied;
-      case 'pending':
-        return BhRoomStatus.pending;
+      case 'roompending':
+        return BhRoomStatus.roompending;
       case 'inactive':
         return BhRoomStatus.inactive;
       default:
@@ -133,8 +133,8 @@ class BhRoomModel {
     switch (s) {
       case BhRoomStatus.occupied:
         return 'occupied';
-      case BhRoomStatus.pending:
-        return 'pending';
+      case BhRoomStatus.roompending:
+        return 'roompending';
       case BhRoomStatus.inactive:
         return 'inactive';
       case BhRoomStatus.available:

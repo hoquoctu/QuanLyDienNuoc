@@ -51,13 +51,33 @@ class _AppRootState extends State<_AppRoot> {
     final auth = context.read<AuthProvider>();
     await auth.init();
 
-    // Sau khi auth xong, nếu là owner thì init dãy trọ luôn
-    final user = auth.currentUser;
-    if (user != null && user.isOwner) {
-      context.read<BoardingHouseProvider>().initForOwner(user.uid);
-    }
+    // Lắng nghe mỗi khi user thay đổi (login/logout)
+    auth.addListener(_onAuthChanged);
+
+    // Lần đầu
+    _onAuthChanged();
 
     if (mounted) setState(() => _initialized = true);
+  }
+
+  void _onAuthChanged() {
+    final auth = context.read<AuthProvider>();
+    final user = auth.currentUser;
+    final bhProvider = context.read<BoardingHouseProvider>();
+
+    if (user == null) {
+      // Logout → clear hết
+      bhProvider.clearData();
+    } else if (user.isOwner) {
+      // Login owner → init stream
+      bhProvider.initForOwner(user.uid);
+    }
+  }
+
+  @override
+  void dispose() {
+    context.read<AuthProvider>().removeListener(_onAuthChanged);
+    super.dispose();
   }
 
   @override
