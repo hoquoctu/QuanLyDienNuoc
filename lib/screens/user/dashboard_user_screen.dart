@@ -7,8 +7,10 @@ import '../../models/bill_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bh_room_provider.dart';
 import '../../providers/bill_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../theme/app_theme.dart';
 import 'bill_detail_screen.dart';
+import 'notification_screen.dart';
 
 class DashboardUserScreen extends StatelessWidget {
   const DashboardUserScreen({super.key});
@@ -82,6 +84,11 @@ class DashboardUserScreen extends StatelessWidget {
               ),
             ),
             title: const Text('Tổng quan', style: TextStyle(color: Colors.white)),
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              _NotificationBell(),
+              const SizedBox(width: 8),
+            ],
           ),
           SliverPadding(
             padding: const EdgeInsets.all(16),
@@ -365,4 +372,60 @@ class _Legend extends StatelessWidget {
     const SizedBox(width: 4),
     Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
   ]);
+}
+
+// ── Notification Bell Icon with Badge ────────────────────────────────────────
+class _NotificationBell extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final notifPvd = context.watch<NotificationProvider>();
+    final unread = notifPvd.unreadCount;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const NotificationScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(
+              Icons.notifications_outlined,
+              color: Colors.white,
+              size: 24,
+            ),
+            if (unread > 0)
+              Positioned(
+                top: -6,
+                right: -6,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                  decoration: const BoxDecoration(
+                    color: AppTheme.errorColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      unread > 99 ? '99+' : '$unread',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

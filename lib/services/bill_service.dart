@@ -46,10 +46,12 @@ class BillService {
         'created_at': FieldValue.serverTimestamp(),
       });
 
-      // 2. Cập nhật bill status → pending
+      // 2. Cập nhật bill status → pending + lưu method & ảnh chuyển khoản
       final billRef = _db.collection('bills').doc(billId);
       batch.update(billRef, {
         'status': _db.doc('status/pending'),
+        'method': method,
+        'transfe_image': transferImage,
         'updated_at': FieldValue.serverTimestamp(),
       });
 

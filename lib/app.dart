@@ -6,6 +6,7 @@ import 'providers/bh_room_provider.dart';
 import 'providers/bill_provider.dart';
 import 'providers/boarding_house_provider.dart';
 import 'providers/invoice_provider.dart';
+import 'providers/notification_provider.dart';
 import 'providers/room_provider.dart';
 import 'providers/room_block_provider.dart';
 import 'screens/auth/login_screen.dart';
@@ -25,6 +26,7 @@ class QuanLyDienNuocApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BhRoomProvider()),
         ChangeNotifierProvider(create: (_) => BillProvider()),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => RoomProvider()),
         ChangeNotifierProvider(create: (_) => RoomBlockProvider()),
       ],
@@ -66,9 +68,10 @@ class _AppRootState extends State<_AppRoot> {
     if (user != null && user.isOwner) {
       context.read<BoardingHouseProvider>().initForOwner(user.uid);
     } else if (user != null && !user.isOwner) {
-      // User thường: stream phòng và hóa đơn từ Firebase
+      // User thường: stream phòng, hóa đơn, và thông báo từ Firebase
       context.read<BhRoomProvider>().initForUser(user.uid);
       context.read<BillProvider>().initForUser(user.uid);
+      context.read<NotificationProvider>().initForUser(user.uid);
     }
 
     if (mounted) setState(() => _initialized = true);

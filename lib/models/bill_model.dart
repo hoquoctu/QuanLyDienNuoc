@@ -47,6 +47,9 @@ class BillModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? roomNumberName;  // "P1404" etc.
+  
+  final String? transfeImage;
+  final String? method;
 
   const BillModel({
     required this.id,
@@ -61,6 +64,9 @@ class BillModel {
     required this.createdAt,
     required this.updatedAt,
     this.roomNumberName,
+
+    this.transfeImage,
+    this.method,
   });
 
   // Tháng / năm tiện dụng
@@ -109,7 +115,43 @@ class BillModel {
       createdAt: (d['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (d['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       roomNumberName: d['room_number_name'],
+
+      transfeImage: d['transfe_image'],
+      method: d['method'],
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id_room': roomId,
+      'id_tenant': tenantId,
+      'id_owner': ownerId,
+      'month': month,
+      'total': total,
+      'status': status.name,
+      'electric': {
+        'oldNumber': electric.oldNumber,
+        'newNumber': electric.newNumber,
+        'used': electric.used,
+        'unitPrice': electric.unitPrice,
+        'total': electric.total,
+        'image': electric.image,
+      },
+      'water': {
+        'oldNumber': water.oldNumber,
+        'newNumber': water.newNumber,
+        'used': water.used,
+        'unitPrice': water.unitPrice,
+        'total': water.total,
+        'image': water.image,
+      },
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'room_number_name': roomNumberName,
+      //--------THem moi-----
+      'transfe_image': transfeImage,
+      'method': method,
+    };
   }
 
   static BillStatus _statusFromKey(String key) {
