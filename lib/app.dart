@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 import 'package:quanlydiennc_app/providers/room_provider.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
@@ -19,6 +20,7 @@ class QuanLyDienNuocApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => RoomProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => BoardingHouseProvider()),
         ChangeNotifierProvider(create: (_) => BillProvider()),
       ],

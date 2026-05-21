@@ -246,6 +246,8 @@ class _SettingsManagerScreenState extends State<SettingsManagerScreen> {
                       minimumSize: const Size(double.infinity, 50),
                     ),
                   ),
+                  const SizedBox(height: 20),
+
                   // Logout
                   OutlinedButton.icon(
                     onPressed: () async {

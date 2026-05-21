@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/screens/owner/notification/notification_screen.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
@@ -24,6 +25,7 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
   final _pages = const [
     RoomBlockListScreen(),
     CreateInvoiceScreen(),
+    NotificationScreen(),
     InvoiceListScreen(),
     SettingsManagerScreen(),
   ];
@@ -31,6 +33,7 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
   final _labels = [
     'Dãy trọ',
     'Tạo HĐ',
+    "thông báo",
     'Hóa đơn',
     'Cài đặt',
   ];
@@ -38,6 +41,7 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
   final _icons = [
     Icons.apartment_outlined,
     Icons.add_circle_outline,
+    Icons.notifications_none_outlined,
     Icons.receipt_long_outlined,
     Icons.settings_outlined,
   ];
@@ -45,6 +49,7 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
   final _activeIcons = [
     Icons.apartment,
     Icons.add_circle,
+    Icons.notifications,
     Icons.receipt_long,
     Icons.settings,
   ];
