@@ -4,6 +4,7 @@ import '../status_service.dart';
 import 'notification_service.dart';
 import '../../models/notification_model.dart';
 import '../../models/bill_model.dart';
+import './payment_service.dart';
 
 class BillService {
   static final _db = FirebaseFirestore.instance;
@@ -147,19 +148,38 @@ class BillService {
 
   // ───────────────── OWNER CONFIRM PAID ─────────────────
 
-  static Future<String?> ownerConfirmPaid({
-    required String billId,
+  static Future<String?> ownerConfirm({
+    required BillModel bill,
+    required String statusKey,
+    required String ownerId,
+    required String ownerName,
   }) async {
     try {
-      final paidStatus = await StatusService.getStatusRef(
+      final status = await StatusService.getStatusRef(
         type: 'payment',
-        key: 'paid',
+        key: statusKey,
       );
 
-      await _db.collection('bills').doc(billId).update({
-        'status': paidStatus,
+      await _db.collection('bills').doc(bill.id).update({
+        'status': status,
         'updated_at': Timestamp.now(),
       });
+
+      // chạy ngầm, không await
+      if (statusKey == 'paid') {
+        PaymentService.ownerConfirmAndCreatePayment(
+          bill: bill,
+          ownerId: ownerId,
+          ownerName: ownerName,
+        );
+      }
+
+      if (statusKey == 'unpaid') {
+        PaymentService.ownerRejectPayment(
+          bill: bill,
+          ownerId: ownerId,
+        );
+      }
 
       return null;
     } catch (e) {

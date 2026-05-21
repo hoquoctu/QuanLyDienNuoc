@@ -61,6 +61,10 @@ class BillModel {
   final UtilityData electric;
   final UtilityData water;
 
+  // chỉ có khi status = pending
+  final String? imageTranfer;
+  final String? method;
+
   final Timestamp createdAt;
   final Timestamp updatedAt;
 
@@ -78,6 +82,8 @@ class BillModel {
     required this.water,
     required this.createdAt,
     required this.updatedAt,
+    this.imageTranfer,
+    this.method,
   });
 
   Map<String, dynamic> toMap() {
@@ -118,6 +124,10 @@ class BillModel {
       ),
       createdAt: map['created_at'] ?? Timestamp.now(),
       updatedAt: map['updated_at'] ?? Timestamp.now(),
+
+      // đọc nếu có, không có thì null
+      imageTranfer: map['transferImage'],
+      method: map['method'],
     );
   }
 }

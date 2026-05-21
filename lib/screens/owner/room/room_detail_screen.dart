@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../providers/auth_provider.dart';
 import '../../../providers/bill_provider.dart';
 import '../../../providers/room_provider.dart';
 import '../../../theme/app_theme.dart';
@@ -19,7 +20,8 @@ class RoomDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final roomPvd = context.read<RoomProvider>();
     final billPvd = context.watch<BillProvider>();
-
+    final ownerId = context.read<AuthProvider>().currentUser!.uid;
+    final ownerName = context.read<AuthProvider>().currentUser!.name;
     final room = roomPvd.getById(roomId);
 
     final bills = billPvd.getBillsByRoom(roomId)
@@ -178,10 +180,11 @@ class RoomDetailScreen extends StatelessWidget {
                               minimumSize: const Size(double.infinity, 44),
                             ),
                             onPressed: () async {
-                              await context
-                                  .read<BillProvider>()
-                                  .ownerConfirmPaid(
-                                    billId: bill.id,
+                              await context.read<BillProvider>().ownerConfirm(
+                                    bill: bill,
+                                    statusKey: 'paid',
+                                    ownerId: ownerId,
+                                    ownerName: ownerName,
                                   );
                             },
                             icon: const Icon(

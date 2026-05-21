@@ -25,7 +25,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
     final billPvd = context.watch<BillProvider>();
 
     final ownerId = context.read<AuthProvider>().currentUser!.uid;
-
+    final ownerName = context.read<AuthProvider>().currentUser!.name;
     final fmt = NumberFormat(
       '#,###',
       'vi_VN',
@@ -299,29 +299,155 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
 
                                 // OWNER CONFIRM
                                 if (bill.status.id == 'pending') ...[
-                                  const SizedBox(
-                                    height: 12,
-                                  ),
-                                  ElevatedButton.icon(
-                                    onPressed: () async {
-                                      await billPvd.ownerConfirmPaid(
-                                        billId: bill.id,
-                                      );
-                                    },
-                                    icon: const Icon(
-                                      Icons.check_circle_outline,
-                                      size: 16,
-                                    ),
-                                    label: const Text(
-                                      'Xác nhận đã thanh toán',
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.successColor,
-                                      minimumSize: const Size(
-                                        double.infinity,
-                                        40,
+                                  const SizedBox(height: 12),
+
+                                  // Hiển thị phương thức thanh toán
+                                  if (bill.method == 'transfer') ...[
+                                    // TRANSFER: hiện ảnh
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Image.network(
+                                        bill.imageTranfer ?? '',
+                                        width: double.infinity,
+                                        height: 180,
+                                        fit: BoxFit.cover,
+                                        loadingBuilder: (ctx, child, progress) {
+                                          if (progress == null) return child;
+                                          return Container(
+                                            height: 180,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[100],
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: const Center(
+                                                child:
+                                                    CircularProgressIndicator()),
+                                          );
+                                        },
+                                        errorBuilder: (ctx, _, __) => Container(
+                                          height: 180,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[100],
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: const Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.broken_image_outlined,
+                                                  color: Colors.grey),
+                                              SizedBox(height: 4),
+                                              Text('Không tải được ảnh',
+                                                  style: TextStyle(
+                                                      color: Colors.grey,
+                                                      fontSize: 12)),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                            Icons.account_balance_outlined,
+                                            size: 14,
+                                            color: AppTheme.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Chuyển khoản',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ] else if (bill.method == 'cash') ...[
+                                    // CASH: hiện dòng phương thức
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color:
+                                                Colors.orange.withOpacity(0.3)),
+                                      ),
+                                      child: const Row(
+                                        children: [
+                                          Icon(Icons.payments_outlined,
+                                              size: 16, color: Colors.orange),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Phương thức: Tiền mặt',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.orange,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      // Nút từ chối
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () async {
+                                            await billPvd.ownerConfirm(
+                                              bill: bill,
+                                              statusKey: 'unpaid',
+                                              ownerId: ownerId,
+                                              ownerName: ownerName,
+                                            );
+                                          },
+                                          icon: const Icon(
+                                              Icons.cancel_outlined,
+                                              size: 16,
+                                              color: AppTheme.errorColor),
+                                          label: const Text('Chưa nhận được',
+                                              style: TextStyle(
+                                                  color: AppTheme.errorColor)),
+                                          style: OutlinedButton.styleFrom(
+                                            side: const BorderSide(
+                                                color: AppTheme.errorColor),
+                                            minimumSize: const Size(0, 40),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Nút xác nhận
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
+                                            await billPvd.ownerConfirm(
+                                              bill: bill,
+                                              statusKey: 'paid',
+                                              ownerId: ownerId,
+                                              ownerName: ownerName,
+                                            );
+                                          },
+                                          icon: const Icon(
+                                              Icons.check_circle_outline,
+                                              size: 16),
+                                          label: const Text('Xác nhận'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                AppTheme.successColor,
+                                            minimumSize: const Size(0, 40),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ],

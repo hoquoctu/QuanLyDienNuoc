@@ -116,15 +116,21 @@ class BillProvider extends ChangeNotifier {
 
   // ───────────────── OWNER CONFIRM PAID ─────────────────
 
-  Future<String?> ownerConfirmPaid({
-    required String billId,
+  Future<String?> ownerConfirm({
+    required BillModel bill,
+    required String statusKey,
+    required String ownerId,
+    required String ownerName,
   }) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      final result = await BillService.ownerConfirmPaid(
-        billId: billId,
+      final result = await BillService.ownerConfirm(
+        bill: bill,
+        statusKey: statusKey,
+        ownerId: ownerId,
+        ownerName: ownerName,
       );
 
       return result;

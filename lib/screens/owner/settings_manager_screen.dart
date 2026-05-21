@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/screens/owner/invoice/PaymentListScreen.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bottom_sheet_confirm.dart';
@@ -230,7 +231,21 @@ class _SettingsManagerScreenState extends State<SettingsManagerScreen> {
                   const SizedBox(height: 32),
                   const Divider(),
                   const SizedBox(height: 16),
-
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PaymentListScreen(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: const Text('Lịch sử thanh toán'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primary,
+                      side: const BorderSide(color: AppTheme.primary),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                  ),
                   // Logout
                   OutlinedButton.icon(
                     onPressed: () async {
