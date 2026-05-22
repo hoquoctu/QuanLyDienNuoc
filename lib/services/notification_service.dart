@@ -7,59 +7,33 @@ class NotificationService {
 
   final _db = FirebaseFirestore.instance;
 
-  /// Stream danh sách thông báo của user dựa trên receiver_id
-  /// Item là subcollection của notifications: notifications/{notifId}/Item/{itemId}
-  /// => Phải dùng collectionGroup để query across all subcollections
+  /// Stream danh sách thông báo của user
+  /// Query notifications collection, rồi kiểm tra Item subcollection của từng cái
+  /// (tránh collectionGroup query cần composite index)
   Stream<List<NotificationItem>> streamNotifications(String userId) {
     final userRef = _db.doc('users/$userId');
-    print('[NotificationService] Stream cho user: $userId');
-    print('[NotificationService] userRef path: ${userRef.path}');
 
-    return _db
-        .collectionGroup('Item')
-        .where('receiver_id', isEqualTo: userRef)
-        .snapshots()
-        .asyncMap((receiverSnap) async {
-      print('[NotificationService] Nhận ${receiverSnap.docs.length} receiver docs');
-
-      if (receiverSnap.docs.isEmpty) return <NotificationItem>[];
-
-      final items = <NotificationItem>[];
-
-      for (final receiverDoc in receiverSnap.docs) {
-        final receiver = NotificationReceiverModel.fromDoc(receiverDoc);
-
-        // Lấy notification parent document
-        // Path: notifications/{notifId}/Item/{itemId}
-        // => parent.parent = notifications/{notifId}
-        final notifRef = receiverDoc.reference.parent.parent;
-        if (notifRef == null) {
-          print('[NotificationService] notifRef null cho doc: ${receiverDoc.id}');
-          continue;
-        }
-
+    return _db.collection('notifications').snapshots().asyncMap((notifSnap) async {
+      final futures = notifSnap.docs.map((notifDoc) async {
         try {
-          final notifDoc = await notifRef.get();
-          if (!notifDoc.exists) {
-            print('[NotificationService] Notification không tồn tại: ${notifRef.path}');
-            continue;
-          }
-
+          final receiverSnap = await notifDoc.reference
+              .collection('Item')
+              .where('receiver_id', isEqualTo: userRef)
+              .limit(1)
+              .get();
+          if (receiverSnap.docs.isEmpty) return null;
+          final receiver = NotificationReceiverModel.fromDoc(receiverSnap.docs.first);
           final notification = NotificationModel.fromDoc(notifDoc);
-          items.add(NotificationItem(
-            notification: notification,
-            receiver: receiver,
-          ));
-        } catch (e) {
-          print('[NotificationService] Lỗi lấy notification: $e');
+          return NotificationItem(notification: notification, receiver: receiver);
+        } catch (_) {
+          return null;
         }
-      }
+      });
 
-      // Sort mới nhất trước
+      final results = await Future.wait(futures);
+      final items = results.whereType<NotificationItem>().toList();
       items.sort((a, b) =>
           b.notification.createdAt.compareTo(a.notification.createdAt));
-
-      print('[NotificationService] Trả về ${items.length} thông báo');
       return items;
     });
   }
@@ -82,17 +56,19 @@ class NotificationService {
   Future<void> markAllAsRead(String userId) async {
     try {
       final userRef = _db.doc('users/$userId');
-      final snap = await _db
-          .collectionGroup('Item')
-          .where('receiver_id', isEqualTo: userRef)
-          .where('is_read', isEqualTo: false)
-          .get();
-
-      if (snap.docs.isEmpty) return;
+      final notifSnap = await _db.collection('notifications').get();
 
       final batch = _db.batch();
-      for (final doc in snap.docs) {
-        batch.update(doc.reference, {'is_read': true});
+      for (final notifDoc in notifSnap.docs) {
+        final receiverSnap = await notifDoc.reference
+            .collection('Item')
+            .where('receiver_id', isEqualTo: userRef)
+            .where('is_read', isEqualTo: false)
+            .limit(1)
+            .get();
+        for (final doc in receiverSnap.docs) {
+          batch.update(doc.reference, {'is_read': true});
+        }
       }
       await batch.commit();
     } catch (e) {
