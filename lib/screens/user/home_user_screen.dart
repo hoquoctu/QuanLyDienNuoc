@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import 'bill_list_user_screen.dart';
 import 'dashboard_user_screen.dart';
-// import 'invoice_list_user_screen.dart';
 import 'room_user_screen.dart';
 import 'settings_user_screen.dart';
 
@@ -16,7 +16,7 @@ class _HomeUserScreenState extends State<HomeUserScreen> {
 
   final _pages = const [
     DashboardUserScreen(),
-    // InvoiceListUserScreen(),
+    BillListUserScreen(),
     RoomUserScreen(),
     SettingsUserScreen(),
   ];

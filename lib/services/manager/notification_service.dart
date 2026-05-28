@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 
 import '../../models/notification_model.dart';
 
@@ -236,5 +237,31 @@ class NotificationService {
     );
 
     await batch.commit();
+  }
+
+  Stream<List<NotificationItem>> streamNotificationsWithRead(String userId) {
+    return _db
+        .collectionGroup('item')
+        .where('receiver_id', isEqualTo: _db.doc('users/$userId'))
+        .snapshots()
+        .asyncMap((snap) async {
+      List<NotificationItem> result = [];
+
+      for (final itemDoc in snap.docs) {
+        final notifDoc = await itemDoc.reference.parent.parent!.get();
+        if (!notifDoc.exists) continue;
+
+        final isRead = itemDoc.data()['is_read'] as bool? ?? false;
+
+        result.add(NotificationItem(
+          notification: NotificationModel.fromDoc(notifDoc),
+          isRead: isRead,
+        ));
+      }
+
+      result.sort((a, b) =>
+          b.notification.createdAt.compareTo(a.notification.createdAt));
+      return result;
+    });
   }
 }

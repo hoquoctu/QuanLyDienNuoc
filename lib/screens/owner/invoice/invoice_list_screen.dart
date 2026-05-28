@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../models/bill_model.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../providers/bill_provider.dart';
+import '../../../providers/owner/bill_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/status_badge.dart';
 
@@ -307,7 +307,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(10),
                                       child: Image.network(
-                                        bill.imageTranfer ?? '',
+                                        bill.transfeImage ?? '',
                                         width: double.infinity,
                                         height: 180,
                                         fit: BoxFit.cover,

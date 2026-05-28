@@ -268,11 +268,29 @@ class BoardingHouseService {
   }
 
   // ── PRIVATE ───────────────────────────────────────────────────────────────
+  /// Stream tất cả phòng của người thuê (theo tenant_id reference)
+  Stream<List<BhRoomModel>> streamRoomsByTenant(String tenantUid) {
+    final tenantRef = _db.doc('users/$tenantUid');
+    return _db
+        .collection('room')
+        .where('tenant_id', isEqualTo: tenantRef)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => BhRoomModel.fromDoc(d)).toList());
+  }
 
   /// Sinh mã 6 ký tự chữ hoa + số
   String _generateCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final rand = Random.secure();
     return List.generate(6, (_) => chars[rand.nextInt(chars.length)]).join();
+  }
+
+  /// Stream thông tin dãy trọ theo ID
+  Stream<BoardingHouseModel?> streamBoardingHouseById(String bhId) {
+    return _db
+        .collection('boardingHouse')
+        .doc(bhId)
+        .snapshots()
+        .map((doc) => doc.exists ? BoardingHouseModel.fromDoc(doc) : null);
   }
 }

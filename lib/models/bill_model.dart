@@ -1,5 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum BillStatus {
+  unpaid, // /status/unpaid
+  paid, // /status/paid
+  overdue, // /status/overdue (nếu có)
+  pending // /status/pending
+}
+
 class UtilityData {
   final double oldNumber;
   final double newNumber;
@@ -62,7 +69,7 @@ class BillModel {
   final UtilityData water;
 
   // chỉ có khi status = pending
-  final String? imageTranfer;
+  final String? transfeImage;
   final String? method;
 
   final Timestamp createdAt;
@@ -82,7 +89,7 @@ class BillModel {
     required this.water,
     required this.createdAt,
     required this.updatedAt,
-    this.imageTranfer,
+    this.transfeImage,
     this.method,
   });
 
@@ -126,7 +133,7 @@ class BillModel {
       updatedAt: map['updated_at'] ?? Timestamp.now(),
 
       // đọc nếu có, không có thì null
-      imageTranfer: map['transferImage'],
+      transfeImage: map['transferImage'],
       method: map['method'],
     );
   }

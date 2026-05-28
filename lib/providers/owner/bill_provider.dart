@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import '../models/bill_model.dart';
-import '../services/manager/bill_service.dart';
+import '../../models/bill_model.dart';
+import '../../services/manager/bill_service.dart';
 
 class BillProvider extends ChangeNotifier {
   final List<BillModel> _bills = [];

@@ -1,37 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:quanlydiennc_app/models/invoice_model.dart';
-import 'package:quanlydiennc_app/providers/user/invoice_provider_user.dart';
-import '../../providers/auth_provider.dart';
+import 'package:quanlydiennc_app/providers/user/bill_provider_user.dart';
+import '../../models/bill_model.dart';
 import '../../theme/app_theme.dart';
-import 'invoice_detail_screen.dart';
-import 'package:quanlydiennc_app/theme/StatusBadge.dart';
+import 'bill_detail_screen.dart';
 
-class InvoiceListUserScreen extends StatelessWidget {
-  const InvoiceListUserScreen({super.key});
+class BillListUserScreen extends StatelessWidget {
+  const BillListUserScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = context.read<AuthProvider>().currentUser!;
-    final invoices =
-        context.watch<InvoiceProviderUser>().invoicesForTenant(user.uid);
+    final billPvd = context.watch<BillProviderUser>();
 
-    final unpaid = invoices
-        .where((i) =>
-            i.status == InvoiceStatus.waitingPayment ||
-            i.status == InvoiceStatus.pendingConfirm)
-        .toList();
-    final paid = invoices
-        .where((i) =>
-            i.status == InvoiceStatus.paid ||
-            i.status == InvoiceStatus.paidLate)
-        .toList();
+    if (billPvd.loading) {
+      return const Scaffold(
+        backgroundColor: AppTheme.surface,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (billPvd.error != null) {
+      return Scaffold(
+        backgroundColor: AppTheme.surface,
+        appBar: AppBar(title: const Text('Hóa đơn của tôi')),
+        body: Center(
+          child: Text(billPvd.error!,
+              style: const TextStyle(color: AppTheme.textSecondary)),
+        ),
+      );
+    }
+
+    final bills = billPvd.bills;
+    final unpaid = billPvd.unpaidBills;
+    final pending = billPvd.pendingBills;
+    final paid = billPvd.paidBills;
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(title: const Text('Hóa đơn của tôi')),
-      body: invoices.isEmpty
+      body: bills.isEmpty
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -50,14 +58,28 @@ class InvoiceListUserScreen extends StatelessWidget {
                 if (unpaid.isNotEmpty) ...[
                   _SectionHeader(
                     icon: Icons.pending_outlined,
-                    label: 'Chờ thanh toán',
+                    label: 'Chưa thanh toán',
                     count: unpaid.length,
                     color: AppTheme.errorColor,
                   ),
                   const SizedBox(height: 8),
-                  ...unpaid.map((i) => Padding(
+                  ...unpaid.map((b) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: _InvoiceCard(invoice: i),
+                        child: _BillCard(bill: b),
+                      )),
+                  const SizedBox(height: 16),
+                ],
+                if (pending.isNotEmpty) ...[
+                  _SectionHeader(
+                    icon: Icons.hourglass_top_rounded,
+                    label: 'Chờ xác nhận',
+                    count: pending.length,
+                    color: Color(0xFFF59E0B),
+                  ),
+                  const SizedBox(height: 8),
+                  ...pending.map((b) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _BillCard(bill: b),
                       )),
                   const SizedBox(height: 16),
                 ],
@@ -69,9 +91,9 @@ class InvoiceListUserScreen extends StatelessWidget {
                     color: AppTheme.successColor,
                   ),
                   const SizedBox(height: 8),
-                  ...paid.map((i) => Padding(
+                  ...paid.map((b) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: _InvoiceCard(invoice: i),
+                        child: _BillCard(bill: b),
                       )),
                 ],
               ],
@@ -80,6 +102,7 @@ class InvoiceListUserScreen extends StatelessWidget {
   }
 }
 
+// ── Section Header ────────────────────────────────────────────────────────────
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -116,21 +139,40 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _InvoiceCard extends StatelessWidget {
-  final InvoiceModel invoice;
-  const _InvoiceCard({required this.invoice});
+// ── Bill Card ────────────────────────────────────────────────────────────────
+class _BillCard extends StatelessWidget {
+  final BillModel bill;
+  const _BillCard({required this.bill});
 
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat('#,###', 'vi_VN');
-    final dateFmt = DateFormat('dd/MM/yyyy');
+
+    final Color statusColor;
+    final String statusLabel;
+
+    switch (bill.status) {
+      case BillStatus.paid:
+        statusColor = AppTheme.successColor;
+        statusLabel = 'Đã thanh toán';
+        break;
+      case BillStatus.pending:
+        statusColor = const Color(0xFFF59E0B);
+        statusLabel = 'Chờ xác nhận';
+        break;
+      case BillStatus.overdue:
+        statusColor = Colors.deepOrange;
+        statusLabel = 'Quá hạn';
+        break;
+      default: // unpaid
+        statusColor = AppTheme.errorColor;
+        statusLabel = 'Chưa thanh toán';
+    }
 
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => InvoiceDetailScreen(invoice: invoice),
-        ),
+        MaterialPageRoute(builder: (_) => BillDetailScreen(bill: bill)),
       ),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -147,25 +189,42 @@ class _InvoiceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header
             Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(invoice.blockName,
+                      Text(bill.month,
                           style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14)),
-                      Text('Phòng ${invoice.roomName}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.textSecondary)),
+                              fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text(
+                        DateFormat('dd/MM/yyyy')
+                            .format(bill.createdAt.toDate()),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppTheme.textHint),
+                      ),
                     ],
                   ),
                 ),
-                StatusBadge.payment(invoice.status.name),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(statusLabel,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: statusColor)),
+                ),
               ],
             ),
             const Divider(height: 16),
+            // Điện & nước
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -177,36 +236,35 @@ class _InvoiceCard extends StatelessWidget {
                         const Icon(Icons.bolt,
                             color: AppTheme.elecColor, size: 14),
                         const SizedBox(width: 4),
-                        Text('${fmt.format(invoice.elecTotal)}đ',
-                            style: const TextStyle(
-                                fontSize: 12, color: AppTheme.textSecondary)),
+                        Text(
+                          '${bill.electric.used.toStringAsFixed(0)} kWh · ${fmt.format(bill.electric.total)}đ',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         const Icon(Icons.water_drop,
                             color: AppTheme.waterColor, size: 14),
                         const SizedBox(width: 4),
-                        Text('${fmt.format(invoice.waterTotal)}đ',
-                            style: const TextStyle(
-                                fontSize: 12, color: AppTheme.textSecondary)),
+                        Text(
+                          '${bill.water.used.toStringAsFixed(0)} m³ · ${fmt.format(bill.water.total)}đ',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(dateFmt.format(invoice.createdAt),
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.textHint)),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                Row(
                   children: [
                     Text(
-                      '${fmt.format(invoice.grandTotal)}đ',
+                      '${fmt.format(bill.total)}đ',
                       style: const TextStyle(
                           fontWeight: FontWeight.w900,
-                          fontSize: 18,
+                          fontSize: 17,
                           color: AppTheme.textPrimary),
                     ),
                     const Icon(Icons.chevron_right, color: AppTheme.textHint),

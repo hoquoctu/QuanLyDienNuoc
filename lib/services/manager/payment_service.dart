@@ -27,7 +27,7 @@ class PaymentService {
         'tenant_name': bill.nameTenant,
         'room_number': bill.roomNumberName,
         'method': bill.method,
-        'transferImage': bill.imageTranfer,
+        'transferImage': bill.transfeImage,
         'total': bill.total,
         'month': bill.month,
         'created_at': FieldValue.serverTimestamp(),

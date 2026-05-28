@@ -168,7 +168,7 @@ class _RoomTileState extends State<RoomTile> {
           },
         );
 
-      case BhRoomStatus.roompending:
+      case BhRoomStatus.waiting:
         return PendingRoomExpanded(
           room: room,
           onConfirm: () async {
@@ -349,7 +349,7 @@ class _RoomNumberBox extends StatelessWidget {
     switch (s) {
       case BhRoomStatus.occupied:
         return AppTheme.successColor;
-      case BhRoomStatus.roompending:
+      case BhRoomStatus.waiting:
         return const Color.fromARGB(255, 58, 59, 63);
       case BhRoomStatus.available:
         return AppTheme.textSecondary;
