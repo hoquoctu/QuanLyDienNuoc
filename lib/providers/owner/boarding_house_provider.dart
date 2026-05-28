@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:quanlydiennc_app/models/bh_room_model.dart';
+import 'package:quanlydiennc_app/models/boarding_house_model.dart';
 import 'package:quanlydiennc_app/services/manager/boarding_house_service.dart';
-import '../models/boarding_house_model.dart';
-import '../models/bh_room_model.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BoardingHouseProvider extends ChangeNotifier {

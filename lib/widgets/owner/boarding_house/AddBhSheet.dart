@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quanlydiennc_app/providers/boarding_house_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
 
 class AddBhSheet extends StatefulWidget {
   final String ownerUid;

@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:quanlydiennc_app/models/bh_room_model.dart';
 import 'package:quanlydiennc_app/models/notification_model.dart';
 import 'package:quanlydiennc_app/providers/auth_provider.dart';
-import 'package:quanlydiennc_app/providers/boarding_house_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
 import 'package:quanlydiennc_app/services/manager/unlink_request_service.dart';
 import 'package:quanlydiennc_app/theme/app_theme.dart';
 import './InactiveRoomExpanded.dart';

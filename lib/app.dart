@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
-import 'package:quanlydiennc_app/providers/room_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/bill_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/room_provider.dart';
+import 'package:quanlydiennc_app/providers/user/bh_room_provider.dart';
+import 'package:quanlydiennc_app/providers/user/bill_provider_user.dart';
+import 'package:quanlydiennc_app/providers/user/invoice_provider_user.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
-import 'providers/boarding_house_provider.dart';
-import 'providers/bill_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/owner/home_manager_screen.dart';
 import 'screens/user/home_user_screen.dart';
@@ -23,6 +26,9 @@ class QuanLyDienNuocApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => BoardingHouseProvider()),
         ChangeNotifierProvider(create: (_) => BillProvider()),
+        ChangeNotifierProvider(create: (_) => BhRoomProviderUser()),
+        ChangeNotifierProvider(create: (_) => BillProviderUser()),
+        ChangeNotifierProvider(create: (_) => InvoiceProviderUser()),
       ],
       child: MaterialApp(
         title: 'SmartUtility - Quản lý điện nước',
