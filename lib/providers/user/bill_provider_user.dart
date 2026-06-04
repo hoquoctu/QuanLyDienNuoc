@@ -13,20 +13,19 @@ class BillProviderUser extends ChangeNotifier {
   List<BillModel> get bills => _bills;
   bool get loading => _loading;
   String? get error => _error;
-
   List<BillModel> get unpaidBills =>
-      _bills.where((b) => b.status == BillStatus.unpaid).toList();
+      _bills.where((b) => b.billStatus == BillStatus.unpaid).toList();
 
   List<BillModel> get pendingBills =>
-      _bills.where((b) => b.status == BillStatus.pending).toList();
+      _bills.where((b) => b.billStatus == BillStatus.pending).toList();
 
   List<BillModel> get paidBills =>
-      _bills.where((b) => b.status == BillStatus.paid).toList();
+      _bills.where((b) => b.billStatus == BillStatus.paid).toList();
 
-  /// Hóa đơn cần xử lý (chưa TT + đang chờ xác nhận)
   List<BillModel> get activeBills => _bills
       .where((b) =>
-          b.status == BillStatus.unpaid || b.status == BillStatus.pending)
+          b.billStatus == BillStatus.unpaid ||
+          b.billStatus == BillStatus.pending)
       .toList();
 
   void initForUser(String tenantUid) {
@@ -39,6 +38,7 @@ class BillProviderUser extends ChangeNotifier {
 
     _sub = BillService.streamBillsByTenant(tenantUid).listen(
       (bills) {
+        print("Bills count: ${bills.length}");
         _bills = bills;
         _loading = false;
         notifyListeners();

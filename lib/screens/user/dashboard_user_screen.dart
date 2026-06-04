@@ -1,16 +1,17 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 import 'package:quanlydiennc_app/providers/user/bh_room_provider.dart';
 import 'package:quanlydiennc_app/providers/user/bill_provider_user.dart';
 import '../../models/bh_room_model.dart';
 import '../../models/bill_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/user/chart_widgets.dart';
+import '../../widgets/user/notification_bell.dart';
+import '../../widgets/user/stat_card.dart';
+import '../../widgets/user/unpaid_card.dart';
 import 'bill_detail_screen.dart';
-import 'notification_screen.dart';
 
 class DashboardUserScreen extends StatelessWidget {
   const DashboardUserScreen({super.key});
@@ -91,7 +92,7 @@ class DashboardUserScreen extends StatelessWidget {
                 const Text('Tổng quan', style: TextStyle(color: Colors.white)),
             iconTheme: const IconThemeData(color: Colors.white),
             actions: [
-              _NotificationBell(),
+              const NotificationBell(),
               const SizedBox(width: 8),
             ],
           ),
@@ -129,7 +130,7 @@ class DashboardUserScreen extends StatelessWidget {
                   // Chỉ số điện nước từ bill
                   Row(children: [
                     Expanded(
-                        child: _StatCard(
+                        child: StatCard(
                             icon: Icons.bolt,
                             iconColor: AppTheme.elecColor,
                             label: 'Chỉ số điện',
@@ -137,7 +138,7 @@ class DashboardUserScreen extends StatelessWidget {
                             trend: _calcTrend(billPvd.bills, isElec: true))),
                     const SizedBox(width: 12),
                     Expanded(
-                        child: _StatCard(
+                        child: StatCard(
                             icon: Icons.water_drop,
                             iconColor: AppTheme.waterColor,
                             label: 'Chỉ số nước',
@@ -167,7 +168,7 @@ class DashboardUserScreen extends StatelessWidget {
                               MaterialPageRoute(
                                   builder: (_) =>
                                       BillDetailScreen(bill: bill))),
-                          child: _UnpaidCard(bill: bill, fmt: fmt),
+                          child: UnpaidCard(bill: bill, fmt: fmt),
                         ),
                       )),
                   const SizedBox(height: 16),
@@ -180,9 +181,9 @@ class DashboardUserScreen extends StatelessWidget {
                           fontSize: 15,
                           color: AppTheme.textPrimary)),
                   const SizedBox(height: 12),
-                  _TotalChart(data: chartData),
+                  TotalChart(data: chartData),
                   const SizedBox(height: 16),
-                  _ElecWaterChart(data: chartData),
+                  ElecWaterChart(data: chartData),
                   const SizedBox(height: 30),
                 ] else if (!billPvd.loading && activeRooms.isNotEmpty) ...[
                   _buildNoInvoiceBanner(),
@@ -391,365 +392,5 @@ class DashboardUserScreen extends StatelessWidget {
     final prev = isElec ? bills[1].electric.used : bills[1].water.used;
     if (prev == 0) return null;
     return ((curr - prev) / prev) * 100;
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final double? trend;
-  const _StatCard(
-      {required this.icon,
-      required this.iconColor,
-      required this.label,
-      required this.value,
-      this.trend});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2))
-            ]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10)),
-              child: Icon(icon, color: iconColor, size: 20)),
-          const SizedBox(height: 10),
-          Text(label,
-              style:
-                  const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-          const SizedBox(height: 4),
-          Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: AppTheme.textPrimary)),
-          if (trend != null) ...[
-            const SizedBox(height: 4),
-            Row(children: [
-              Icon(trend! >= 0 ? Icons.trending_up : Icons.trending_down,
-                  color:
-                      trend! >= 0 ? AppTheme.errorColor : AppTheme.successColor,
-                  size: 14),
-              const SizedBox(width: 2),
-              Text('${trend!.abs().toStringAsFixed(1)}%',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: trend! >= 0
-                          ? AppTheme.errorColor
-                          : AppTheme.successColor)),
-            ])
-          ],
-        ]));
-  }
-}
-
-class _UnpaidCard extends StatelessWidget {
-  final BillModel bill;
-  final NumberFormat fmt;
-  const _UnpaidCard({required this.bill, required this.fmt});
-  @override
-  Widget build(BuildContext context) {
-    final Color statusColor;
-    final String statusLabel;
-    final IconData statusIcon;
-    switch (bill.status) {
-      case BillStatus.pending:
-        statusColor = const Color(0xFFF59E0B);
-        statusLabel = 'Chờ xác nhận';
-        statusIcon = Icons.hourglass_top_rounded;
-        break;
-      case BillStatus.overdue:
-        statusColor = Colors.deepOrange;
-        statusLabel = 'Quá hạn';
-        statusIcon = Icons.warning_rounded;
-        break;
-      default:
-        statusColor = AppTheme.errorColor;
-        statusLabel = 'Chờ thanh toán';
-        statusIcon = Icons.warning_amber_rounded;
-    }
-    return Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: statusColor.withOpacity(0.25))),
-        child: Row(children: [
-          Icon(statusIcon, color: statusColor, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text('${bill.roomNumberName ?? ''} · ${bill.month}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 14)),
-                Text(statusLabel,
-                    style: TextStyle(fontSize: 12, color: statusColor)),
-              ])),
-          Text('${fmt.format(bill.total)}đ',
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: statusColor,
-                  fontSize: 15)),
-          const Icon(Icons.chevron_right, color: AppTheme.textHint),
-        ]));
-  }
-}
-
-class _TotalChart extends StatelessWidget {
-  final List<Map<String, double>> data;
-  const _TotalChart({required this.data});
-  @override
-  Widget build(BuildContext context) {
-    final months = [
-      'T1',
-      'T2',
-      'T3',
-      'T4',
-      'T5',
-      'T6',
-      'T7',
-      'T8',
-      'T9',
-      'T10',
-      'T11',
-      'T12'
-    ];
-    return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2))
-            ]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Tổng chi phí',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-          const SizedBox(height: 16),
-          SizedBox(
-              height: 160,
-              child: BarChart(BarChartData(
-                borderData: FlBorderData(show: false),
-                gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    getDrawingHorizontalLine: (_) => FlLine(
-                        color: Colors.grey.withOpacity(0.15), strokeWidth: 1)),
-                titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (v, _) => Text(
-                                months[v.toInt() - 1],
-                                style: const TextStyle(
-                                    fontSize: 10, color: AppTheme.textHint)))),
-                    leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false))),
-                barGroups: data
-                    .map((d) =>
-                        BarChartGroupData(x: d['month']!.toInt(), barRods: [
-                          BarChartRodData(
-                              toY: d['elec']! + d['water']!,
-                              color: AppTheme.primary,
-                              width: 24,
-                              borderRadius: BorderRadius.circular(6))
-                        ]))
-                    .toList(),
-              ))),
-        ]));
-  }
-}
-
-class _ElecWaterChart extends StatelessWidget {
-  final List<Map<String, double>> data;
-  const _ElecWaterChart({required this.data});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2))
-            ]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Text('Điện & Nước',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-            const Spacer(),
-            _Legend(color: AppTheme.elecColor, label: 'Điện'),
-            const SizedBox(width: 12),
-            _Legend(color: AppTheme.waterColor, label: 'Nước'),
-          ]),
-          const SizedBox(height: 16),
-          SizedBox(
-              height: 160,
-              child: LineChart(LineChartData(
-                borderData: FlBorderData(show: false),
-                gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    getDrawingHorizontalLine: (_) => FlLine(
-                        color: Colors.grey.withOpacity(0.15), strokeWidth: 1)),
-                titlesData: const FlTitlesData(
-                    bottomTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    leftTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false))),
-                lineBarsData: [
-                  LineChartBarData(
-                      spots: data
-                          .asMap()
-                          .entries
-                          .map(
-                              (e) => FlSpot(e.key.toDouble(), e.value['elec']!))
-                          .toList(),
-                      isCurved: true,
-                      color: AppTheme.elecColor,
-                      barWidth: 3,
-                      dotData: FlDotData(
-                          getDotPainter: (_, __, ___, ____) =>
-                              FlDotCirclePainter(
-                                  radius: 4,
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                  strokeColor: AppTheme.elecColor)),
-                      belowBarData: BarAreaData(
-                          show: true,
-                          color: AppTheme.elecColor.withOpacity(0.08))),
-                  LineChartBarData(
-                      spots: data
-                          .asMap()
-                          .entries
-                          .map((e) =>
-                              FlSpot(e.key.toDouble(), e.value['water']!))
-                          .toList(),
-                      isCurved: true,
-                      color: AppTheme.waterColor,
-                      barWidth: 3,
-                      dotData: FlDotData(
-                          getDotPainter: (_, __, ___, ____) =>
-                              FlDotCirclePainter(
-                                  radius: 4,
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                  strokeColor: AppTheme.waterColor)),
-                      belowBarData: BarAreaData(
-                          show: true,
-                          color: AppTheme.waterColor.withOpacity(0.08))),
-                ],
-              ))),
-        ]));
-  }
-}
-
-class _Legend extends StatelessWidget {
-  final Color color;
-  final String label;
-  const _Legend({required this.color, required this.label});
-  @override
-  Widget build(BuildContext context) => Row(children: [
-        Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-      ]);
-}
-
-// ── Notification Bell Icon with Badge ────────────────────────────────────────
-class _NotificationBell extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final userId = context.read<AuthProvider>().currentUser?.uid;
-    final notifPvd = context.watch<NotificationProvider>();
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const NotificationScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: StreamBuilder<int>(
-          stream: notifPvd.streamUnreadCount(userId!),
-          builder: (context, snapshot) {
-            final unread = snapshot.data ?? 0;
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                  size: 24,
-                ),
-                if (unread > 0)
-                  Positioned(
-                    top: -6,
-                    right: -6,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      constraints:
-                          const BoxConstraints(minWidth: 18, minHeight: 18),
-                      decoration: const BoxDecoration(
-                        color: AppTheme.errorColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          unread > 99 ? '99+' : '$unread',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
   }
 }

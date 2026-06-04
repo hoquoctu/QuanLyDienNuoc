@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/bh_room_model.dart';
 import '../../models/boarding_house_model.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/user/mini_stat.dart';
 
 class RoomUserScreen extends StatefulWidget {
   const RoomUserScreen({super.key});
@@ -289,7 +290,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
             Row(
               children: [
                 Expanded(
-                  child: _MiniStat(
+                  child: MiniStat(
                     icon: Icons.bolt,
                     iconColor: AppTheme.elecColor,
                     label: 'Điện',
@@ -298,7 +299,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _MiniStat(
+                  child: MiniStat(
                     icon: Icons.water_drop,
                     iconColor: AppTheme.waterColor,
                     label: 'Nước',
@@ -499,44 +500,6 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ── Mini Stat ────────────────────────────────────────────────────────────────
-class _MiniStat extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-
-  const _MiniStat({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: iconColor, size: 16),
-        const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 10, color: AppTheme.textSecondary)),
-            Text(value,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: AppTheme.textPrimary)),
-          ],
-        ),
-      ],
     );
   }
 }

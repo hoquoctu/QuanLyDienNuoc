@@ -98,4 +98,17 @@ class PaymentService {
         .snapshots()
         .map((snap) => snap.docs.map((d) => PaymentModel.fromDoc(d)).toList());
   }
+
+  static Stream<List<PaymentModel>> streamPaymentsByTenant({
+    required String tenantId,
+    required String month,
+  }) {
+    return _db
+        .collection('payments')
+        .where('id_tenant', isEqualTo: _db.doc('users/$tenantId'))
+        .where('month', isEqualTo: month)
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => PaymentModel.fromDoc(d)).toList());
+  }
 }

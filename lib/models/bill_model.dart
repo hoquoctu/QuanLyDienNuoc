@@ -92,6 +92,21 @@ class BillModel {
     this.transfeImage,
     this.method,
   });
+// Thêm getter này vào BillModel
+  BillStatus get billStatus {
+    final path =
+        status.id; // lấy document id: "unpaid", "paid", "pending", "overdue"
+    switch (path) {
+      case 'paid':
+        return BillStatus.paid;
+      case 'pending':
+        return BillStatus.pending;
+      case 'overdue':
+        return BillStatus.overdue;
+      default:
+        return BillStatus.unpaid;
+    }
+  }
 
   Map<String, dynamic> toMap() {
     return {

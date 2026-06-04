@@ -9,6 +9,8 @@ import '../../services/CloudinaryUpload.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bottom_sheet_confirm.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/user/settings_info_row.dart';
+import 'PaymentListScreen.dart';
 
 class SettingsUserScreen extends StatefulWidget {
   const SettingsUserScreen({super.key});
@@ -226,17 +228,17 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
                           color: AppTheme.textHint, size: 20),
                     ),
                   ] else ...[
-                    _InfoRow(
+                    SettingsInfoRow(
                         icon: Icons.person_outline,
                         label: 'Họ tên',
                         value: user.name),
                     const Divider(height: 16),
-                    _InfoRow(
+                    SettingsInfoRow(
                         icon: Icons.email_outlined,
                         label: 'Email',
                         value: user.email),
                     const Divider(height: 16),
-                    _InfoRow(
+                    SettingsInfoRow(
                         icon: Icons.phone_outlined,
                         label: 'Điện thoại',
                         value: user.phone),
@@ -270,7 +272,22 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
                 onTap: () => _showChangePasswordSheet(context),
               ),
             ),
-
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PaymentListScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Lịch sử thanh toán'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: const BorderSide(color: AppTheme.primary),
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
             const SizedBox(height: 12),
 
             // Logout
@@ -386,30 +403,6 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _InfoRow(
-      {required this.icon, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppTheme.textHint),
-        const SizedBox(width: 10),
-        Text(label,
-            style:
-                const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-        const Spacer(),
-        Text(value,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-      ],
     );
   }
 }

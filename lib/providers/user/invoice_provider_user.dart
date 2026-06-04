@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:quanlydiennc_app/models/invoice_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 
 class InvoiceProviderUser extends ChangeNotifier {
   List<InvoiceModel> _invoices = [];
@@ -55,50 +54,6 @@ class InvoiceProviderUser extends ChangeNotifier {
       final list = jsonDecode(invoicesJson) as List;
       _invoices = list.map((e) => InvoiceModel.fromMap(e)).toList();
     } else {
-      // seed demo data
-      final now = DateTime.now();
-      _invoices = [
-        InvoiceModel(
-          id: 'inv001',
-          roomId: 'room001',
-          roomName: 'B1-01',
-          blockId: 'blk001',
-          blockName: 'Dãy Trọ Bình Minh',
-          blockAddress: '123 Đường Lê Văn Việt, Quận 9, TP.HCM',
-          tenantId: 'usr001',
-          tenantName: 'Trần Thị Lan',
-          prevElec: 1130,
-          currElec: 1240,
-          prevWater: 78,
-          currWater: 85,
-          elecPrice: 3500,
-          waterPrice: 15000,
-          createdAt: DateTime(now.year, now.month - 1, 28),
-          dueDate: DateTime(now.year, now.month, 5),
-          status: InvoiceStatus.paid,
-          paymentMethod: PaymentMethod.transfer,
-          paidAt: DateTime(now.year, now.month, 3),
-        ),
-        InvoiceModel(
-          id: 'inv002',
-          roomId: 'room001',
-          roomName: 'B1-01',
-          blockId: 'blk001',
-          blockName: 'Dãy Trọ Bình Minh',
-          blockAddress: '123 Đường Lê Văn Việt, Quận 9, TP.HCM',
-          tenantId: 'usr001',
-          tenantName: 'Trần Thị Lan',
-          prevElec: 1240,
-          currElec: 1350,
-          prevWater: 85,
-          currWater: 92,
-          elecPrice: 3500,
-          waterPrice: 15000,
-          createdAt: DateTime(now.year, now.month, 28),
-          dueDate: DateTime(now.year, now.month + 1, 5),
-          status: InvoiceStatus.waitingPayment,
-        ),
-      ];
       await _saveInvoices();
     }
     notifyListeners();
@@ -111,46 +66,6 @@ class InvoiceProviderUser extends ChangeNotifier {
     await prefs.setString(
         _pricesKey, jsonEncode({'elec': elec, 'water': water}));
     notifyListeners();
-  }
-
-  Future<InvoiceModel> createInvoice({
-    required String roomId,
-    required String roomName,
-    required String blockId,
-    required String blockName,
-    required String blockAddress,
-    required String tenantId,
-    required String tenantName,
-    required double prevElec,
-    required double currElec,
-    required double prevWater,
-    required double currWater,
-    String? imagePath,
-  }) async {
-    final inv = InvoiceModel(
-      id: const Uuid().v4(),
-      roomId: roomId,
-      roomName: roomName,
-      blockId: blockId,
-      blockName: blockName,
-      blockAddress: blockAddress,
-      tenantId: tenantId,
-      tenantName: tenantName,
-      prevElec: prevElec,
-      currElec: currElec,
-      prevWater: prevWater,
-      currWater: currWater,
-      elecPrice: _elecPrice,
-      waterPrice: _waterPrice,
-      imagePath: imagePath,
-      createdAt: DateTime.now(),
-      dueDate: DateTime.now().add(const Duration(days: 7)),
-      status: InvoiceStatus.waitingPayment,
-    );
-    _invoices.add(inv);
-    await _saveInvoices();
-    notifyListeners();
-    return inv;
   }
 
   /// User reports payment

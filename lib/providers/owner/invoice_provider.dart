@@ -56,49 +56,7 @@ class InvoiceProvider extends ChangeNotifier {
       _invoices = list.map((e) => InvoiceModel.fromMap(e)).toList();
     } else {
       // seed demo data
-      final now = DateTime.now();
-      _invoices = [
-        InvoiceModel(
-          id: 'inv001',
-          roomId: 'room001',
-          roomName: 'B1-01',
-          blockId: 'blk001',
-          blockName: 'Dãy Trọ Bình Minh',
-          blockAddress: '123 Đường Lê Văn Việt, Quận 9, TP.HCM',
-          tenantId: 'usr001',
-          tenantName: 'Trần Thị Lan',
-          prevElec: 1130,
-          currElec: 1240,
-          prevWater: 78,
-          currWater: 85,
-          elecPrice: 3500,
-          waterPrice: 15000,
-          createdAt: DateTime(now.year, now.month - 1, 28),
-          dueDate: DateTime(now.year, now.month, 5),
-          status: InvoiceStatus.paid,
-          paymentMethod: PaymentMethod.transfer,
-          paidAt: DateTime(now.year, now.month, 3),
-        ),
-        InvoiceModel(
-          id: 'inv002',
-          roomId: 'room001',
-          roomName: 'B1-01',
-          blockId: 'blk001',
-          blockName: 'Dãy Trọ Bình Minh',
-          blockAddress: '123 Đường Lê Văn Việt, Quận 9, TP.HCM',
-          tenantId: 'usr001',
-          tenantName: 'Trần Thị Lan',
-          prevElec: 1240,
-          currElec: 1350,
-          prevWater: 85,
-          currWater: 92,
-          elecPrice: 3500,
-          waterPrice: 15000,
-          createdAt: DateTime(now.year, now.month, 28),
-          dueDate: DateTime(now.year, now.month + 1, 5),
-          status: InvoiceStatus.waitingPayment,
-        ),
-      ];
+
       await _saveInvoices();
     }
     notifyListeners();
@@ -145,7 +103,7 @@ class InvoiceProvider extends ChangeNotifier {
       imagePath: imagePath,
       createdAt: DateTime.now(),
       dueDate: DateTime.now().add(const Duration(days: 7)),
-      status: InvoiceStatus.waitingPayment,
+      status: InvoiceStatus.pending,
     );
     _invoices.add(inv);
     await _saveInvoices();

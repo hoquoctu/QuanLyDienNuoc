@@ -8,7 +8,7 @@ import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
 
 class AddBhSheet extends StatefulWidget {
   final String ownerUid;
-  const AddBhSheet({required this.ownerUid});
+  const AddBhSheet({required this.ownerUid, super.key});
 
   @override
   State<AddBhSheet> createState() => _AddBhSheetState();
