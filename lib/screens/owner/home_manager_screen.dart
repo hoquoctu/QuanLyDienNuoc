@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 import 'package:quanlydiennc_app/screens/owner/notification/notification_screen.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/owner/bill_provider.dart';
-
 import '../../theme/app_theme.dart';
-
 import 'room_block/room_block_list_screen.dart';
 import 'invoice/create_invoice_screen.dart';
 import 'invoice/invoice_list_screen.dart';
@@ -30,13 +29,7 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
     SettingsManagerScreen(),
   ];
 
-  final _labels = [
-    'Dãy trọ',
-    'Tạo HĐ',
-    "thông báo",
-    'Hóa đơn',
-    'Cài đặt',
-  ];
+  final _labels = ['Dãy trọ', 'Tạo HĐ', 'Thông báo', 'Hóa đơn', 'Cài đặt'];
 
   final _icons = [
     Icons.apartment_outlined,
@@ -57,21 +50,21 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
   @override
   Widget build(BuildContext context) {
     final ownerId = context.read<AuthProvider>().currentUser!.uid;
-
     final billPvd = context.watch<BillProvider>();
+    final notiPvd = context.watch<NotificationProvider>(); // thêm
 
-    // đếm bill chờ chủ trọ duyệtR
-    final pendingCount = billPvd.allBills.where((bill) {
-      return bill.idOwner.id == ownerId && bill.status.id == 'pending';
-    }).length;
+    final pendingCount = billPvd.allBills
+        .where(
+            (bill) => bill.idOwner.id == ownerId && bill.status.id == 'pending')
+        .length;
+
+    final unreadCount = notiPvd.items.where((i) => !i.isRead).length; // thêm
 
     return Scaffold(
       body: IndexedStack(
         index: _tab,
         children: _pages,
       ),
-
-      // ───────────────── BOTTOM BAR ─────────────────
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -93,11 +86,7 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
                 return Expanded(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      setState(() {
-                        _tab = i;
-                      });
-                    },
+                    onTap: () => setState(() => _tab = i),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -111,8 +100,33 @@ class _HomeManagerScreenState extends State<HomeManagerScreen> {
                                   active ? AppTheme.primary : AppTheme.textHint,
                             ),
 
-                            // badge hóa đơn chờ duyệt
-                            if (i == 2 && pendingCount > 0)
+                            // badge unread notifications
+                            if (i == 2 && unreadCount > 0)
+                              Positioned(
+                                right: -8,
+                                top: -6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 2,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.errorColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                            // badge bills pending (tab hóa đơn = index 3)
+                            if (i == 3 && pendingCount > 0)
                               Positioned(
                                 right: -8,
                                 top: -6,

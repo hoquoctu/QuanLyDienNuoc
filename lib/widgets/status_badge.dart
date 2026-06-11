@@ -38,7 +38,11 @@ class StatusBadge extends StatelessWidget {
           fg = AppTheme.primary;
           label = 'Chờ xác nhận';
           break;
-
+        case 'cancelled':
+          bg = AppTheme.textHint.withOpacity(0.12);
+          fg = AppTheme.textSecondary;
+          label = 'Đã hủy';
+          break;
         case 'unpaid':
         default:
           bg = AppTheme.errorColor.withOpacity(0.12);

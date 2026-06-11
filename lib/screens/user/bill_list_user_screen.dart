@@ -29,6 +29,7 @@ class _BillListUserScreenState extends State<BillListUserScreen> {
   @override
   Widget build(BuildContext context) {
     final billPvd = context.watch<BillProviderUser>();
+    final cancelled = billPvd.cancelledBills;
 
     if (billPvd.loading) {
       return const Scaffold(
@@ -109,6 +110,20 @@ class _BillListUserScreenState extends State<BillListUserScreen> {
                   ),
                   const SizedBox(height: 8),
                   ...paid.map((b) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: BillCard(bill: b),
+                      )),
+                ],
+                if (cancelled.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  SectionHeader(
+                    icon: Icons.cancel_outlined,
+                    label: 'Đã hủy',
+                    count: cancelled.length,
+                    color: AppTheme.textSecondary,
+                  ),
+                  const SizedBox(height: 8),
+                  ...cancelled.map((b) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: BillCard(bill: b),
                       )),

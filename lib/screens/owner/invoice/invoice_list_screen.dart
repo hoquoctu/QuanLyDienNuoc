@@ -296,7 +296,56 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                                     ),
                                   ],
                                 ),
-
+// HỦY KHI UNPAID
+                                if (bill.status.id == 'unpaid') ...[
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text('Hủy hóa đơn'),
+                                            content: Text(
+                                              'Bạn có chắc muốn hủy hóa đơn phòng ${bill.roomNumberName} tháng ${bill.month}?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx, false),
+                                                child: const Text('Không'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx, true),
+                                                child: const Text('Hủy hóa đơn',
+                                                    style: TextStyle(
+                                                        color: Colors.red)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm == true) {
+                                          await billPvd.cancelBill(
+                                            bill: bill,
+                                            ownerId: ownerId,
+                                            ownerName: ownerName,
+                                          );
+                                        }
+                                      },
+                                      icon: const Icon(Icons.delete_outline,
+                                          size: 16, color: Colors.red),
+                                      label: const Text('Hủy hóa đơn',
+                                          style: TextStyle(color: Colors.red)),
+                                      style: OutlinedButton.styleFrom(
+                                        side:
+                                            const BorderSide(color: Colors.red),
+                                        minimumSize: const Size(0, 40),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                                 // OWNER CONFIRM
                                 if (bill.status.id == 'pending') ...[
                                   const SizedBox(height: 12),

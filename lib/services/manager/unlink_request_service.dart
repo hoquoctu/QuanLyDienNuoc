@@ -7,14 +7,13 @@ import '../../models/notification_model.dart';
 
 class UnlinkRequestService {
   UnlinkRequestService._();
-
   static final UnlinkRequestService instance = UnlinkRequestService._();
 
   final _db = FirebaseFirestore.instance;
-
   final _notifSvc = NotificationService.instance;
 
   // ───────────────── OWNER SEND REQUEST ─────────────────
+  // Dùng StatusService vì cần check existing bằng DocumentReference
 
   Future<String?> sendUnlinkRequest({
     required String roomId,
@@ -26,21 +25,14 @@ class UnlinkRequestService {
   }) async {
     try {
       final pendingStatus = await StatusService.getStatusRef(
-        type: 'request',
-        key: 'pending',
+        type: 'room',
+        key: 'roompending',
       );
 
-      // check existing pending request
       final existing = await _db
           .collection('request')
-          .where(
-            'id_room',
-            isEqualTo: _db.doc('room/$roomId'),
-          )
-          .where(
-            'status',
-            isEqualTo: pendingStatus,
-          )
+          .where('id_room', isEqualTo: _db.doc('room/$roomId'))
+          .where('status', isEqualTo: pendingStatus)
           .limit(1)
           .get();
 
@@ -63,7 +55,6 @@ class UnlinkRequestService {
             ).toFirestore(_db),
           );
 
-      // notification
       await _notifSvc.createNotification(
         receiverId: tenantId,
         senderId: ownerId,
@@ -78,6 +69,8 @@ class UnlinkRequestService {
   }
 
   // ───────────────── ACCEPT REQUEST ─────────────────
+  // Dùng StatusService cho room (type: room, key: available)
+  // Request status dùng string thẳng vì không có type: 'request' trong Firestore
 
   Future<String?> acceptUnlink({
     required String requestId,
@@ -88,49 +81,38 @@ class UnlinkRequestService {
     required String roomNumber,
   }) async {
     try {
-      final acceptedStatus = await StatusService.getStatusRef(
-        type: 'request',
-        key: 'accepted',
-      );
-
       final availableStatus = await StatusService.getStatusRef(
         type: 'room',
         key: 'available',
       );
 
       final batch = _db.batch();
-
       final now = Timestamp.now();
 
-      // update request
+      // Update request status bằng string thẳng
       batch.update(
-        _db.collection('request').doc(
-              requestId,
-            ),
-        {
-          'status': acceptedStatus,
-          'updated_at': now,
-        },
+        _db.collection('request').doc(requestId),
+        {'status': 'accepted', 'updated_at': now},
       );
 
-      // reset room
+      // Reset room về available dùng DocumentReference
       batch.update(
         _db.collection('room').doc(roomId),
         {
           'status': availableStatus,
           'tenant_id': null,
+          'tenant_name': null,
           'updated_at': now,
         },
       );
 
       await batch.commit();
 
-      // notify owner
       await _notifSvc.createNotification(
         receiverId: ownerId,
         senderId: tenantId,
         type: NotificationType.room,
-        content: '$tenantName đã rời phòng $roomNumber',
+        content: '$tenantName đã đồng ý rời phòng $roomNumber',
       );
 
       return null;
@@ -140,6 +122,7 @@ class UnlinkRequestService {
   }
 
   // ───────────────── REJECT REQUEST ─────────────────
+  // Request status dùng string thẳng
 
   Future<String?> rejectUnlink({
     required String requestId,
@@ -149,22 +132,16 @@ class UnlinkRequestService {
     required String roomNumber,
   }) async {
     try {
-      final rejectedStatus = await StatusService.getStatusRef(
-        type: 'request',
-        key: 'rejected',
-      );
-
       await _db.collection('request').doc(requestId).update({
-        'status': rejectedStatus,
+        'status': 'rejected',
         'updated_at': Timestamp.now(),
       });
 
-      // notify owner
       await _notifSvc.createNotification(
         receiverId: ownerId,
         senderId: tenantId,
         type: NotificationType.room,
-        content: '$tenantName từ chối hủy phòng $roomNumber',
+        content: '$tenantName từ chối rời phòng $roomNumber',
       );
 
       return null;
@@ -173,56 +150,57 @@ class UnlinkRequestService {
     }
   }
 
-  // ───────────────── TENANT PENDING REQUESTS ─────────────────
+  // ───────────────── CANCEL REQUEST (owner hủy lại) ─────────────────
+
+  Future<String?> cancelUnlinkRequest(String requestId) async {
+    try {
+      await _db.collection('request').doc(requestId).delete();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // ───────────────── STREAM PENDING FOR ROOM ─────────────────
+
+  Stream<UnlinkRequestModel?> streamPendingRequestForRoom(String roomId) {
+    return _db
+        .collection('request')
+        .where('id_room', isEqualTo: _db.doc('room/$roomId'))
+        .limit(1)
+        .snapshots()
+        .map((snap) {
+      if (snap.docs.isEmpty) return null;
+      final model = UnlinkRequestModel.fromDoc(snap.docs.first);
+      return model.status == UnlinkRequestStatus.roompending ? model : null;
+    });
+  }
+
+  // ───────────────── STREAM PENDING FOR TENANT ─────────────────
 
   Stream<List<UnlinkRequestModel>> streamPendingRequestsForTenant(
     String tenantId,
   ) {
     return _db
         .collection('request')
-        .where(
-          'id_tenant',
-          isEqualTo: _db.doc('users/$tenantId'),
-        )
-        .orderBy(
-          'created_at',
-          descending: true,
-        )
+        .where('id_tenant', isEqualTo: _db.doc('users/$tenantId'))
+        .orderBy('created_at', descending: true)
         .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map(
-                (d) => UnlinkRequestModel.fromDoc(d),
-              )
-              .where(
-                (e) => e.status == UnlinkRequestStatus.roompending,
-              )
-              .toList(),
-        );
+        .map((snap) => snap.docs
+            .map((d) => UnlinkRequestModel.fromDoc(d))
+            .where((e) => e.status == UnlinkRequestStatus.roompending)
+            .toList());
   }
 
-  // ───────────────── OWNER REQUESTS ─────────────────
+  // ───────────────── STREAM ALL FOR OWNER ─────────────────
 
-  Stream<List<UnlinkRequestModel>> streamRequestsForOwner(
-    String ownerId,
-  ) {
+  Stream<List<UnlinkRequestModel>> streamRequestsForOwner(String ownerId) {
     return _db
         .collection('request')
-        .where(
-          'id_owner',
-          isEqualTo: _db.doc('users/$ownerId'),
-        )
-        .orderBy(
-          'created_at',
-          descending: true,
-        )
+        .where('id_owner', isEqualTo: _db.doc('users/$ownerId'))
+        .orderBy('created_at', descending: true)
         .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map(
-                (d) => UnlinkRequestModel.fromDoc(d),
-              )
-              .toList(),
-        );
+        .map((snap) =>
+            snap.docs.map((d) => UnlinkRequestModel.fromDoc(d)).toList());
   }
 }

@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:quanlydiennc_app/providers/owner/bill_provider.dart';
-import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
 
 import '../../../models/bh_room_model.dart';
 import '../../../providers/auth_provider.dart';
-
+import '../../../providers/owner/bill_provider.dart';
+import '../../../providers/owner/boarding_house_provider.dart';
 import '../../../services/cloudinary_service.dart';
 
 import '../../../services/service_config_service.dart';
@@ -29,6 +28,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
   final _currElecCtrl = TextEditingController();
   final _currWaterCtrl = TextEditingController();
+  DateTime _selectedMonth = DateTime.now();
 
   String? _electricImagePath;
   String? _waterImagePath;
@@ -49,7 +49,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
   Future<void> _loadServicePrice() async {
     final ownerUid = context.read<AuthProvider>().currentUser!.uid;
-
     final config = await ServiceConfigService.getPrices(ownerUid);
 
     setState(() {
@@ -74,6 +73,15 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     }
   }
 
+  Future<void> _pickMonth() async {
+    final picked = await showDialog<DateTime>(
+      context: context,
+      builder: (ctx) => _MonthPickerDialog(initialDate: _selectedMonth),
+    );
+    if (picked != null) {
+      setState(() => _selectedMonth = picked);
+    }
+  }
   // ───────────────── PICK WATER IMAGE ─────────────────
 
   Future<void> _pickWaterImage() async {
@@ -215,6 +223,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             newWater: currWater,
             waterPrice: waterPrice,
             waterImage: waterImage,
+            month:
+                '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}',
           );
 
       if (error != null) {
@@ -344,7 +354,36 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   ],
                 ),
               ),
-
+// Thêm vào đầu Column children, trước _SectionLabel số 1
+            GestureDetector(
+              onTap: _pickMonth,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.primary),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_month, color: AppTheme.primary),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Tháng: ${_selectedMonth.month.toString().padLeft(2, '0')}/${_selectedMonth.year}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(Icons.edit, color: AppTheme.primary, size: 18),
+                  ],
+                ),
+              ),
+            ),
             // block
             _SectionLabel(
               number: '1',
@@ -817,6 +856,109 @@ class _ReadingInputState extends State<_ReadingInput> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _MonthPickerDialog extends StatefulWidget {
+  final DateTime initialDate;
+  const _MonthPickerDialog({required this.initialDate});
+
+  @override
+  State<_MonthPickerDialog> createState() => _MonthPickerDialogState();
+}
+
+class _MonthPickerDialogState extends State<_MonthPickerDialog> {
+  late int _year;
+  late int _month;
+
+  @override
+  void initState() {
+    super.initState();
+    _year = widget.initialDate.year;
+    _month = widget.initialDate.month;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => setState(() {
+              if (_month == 1) {
+                _month = 12;
+                _year--;
+              } else
+                _month--;
+            }),
+          ),
+          Text('$_year', style: const TextStyle(fontWeight: FontWeight.w700)),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: () => setState(() {
+              if (_month == 12) {
+                _month = 1;
+                _year++;
+              } else
+                _month++;
+            }),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 280,
+        child: GridView.builder(
+          shrinkWrap: true,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            childAspectRatio: 2.2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+          ),
+          itemCount: 12,
+          itemBuilder: (ctx, i) {
+            final m = i + 1;
+            final selected = m == _month;
+            final label = 'T${m}';
+            return GestureDetector(
+              onTap: () => setState(() => _month = m),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                decoration: BoxDecoration(
+                  color: selected ? AppTheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color:
+                        selected ? AppTheme.primary : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, DateTime(_year, _month)),
+          child: const Text('Chọn'),
+        ),
+      ],
     );
   }
 }

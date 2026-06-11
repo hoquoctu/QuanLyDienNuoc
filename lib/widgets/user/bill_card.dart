@@ -24,6 +24,10 @@ class BillCard extends StatelessWidget {
         statusColor = const Color(0xFFF59E0B);
         statusLabel = 'Chờ xác nhận';
         break;
+      case BillStatus.cancelled:
+        statusColor = AppTheme.textSecondary;
+        statusLabel = 'Đã hủy';
+        break;
       case BillStatus.overdue:
         statusColor = Colors.deepOrange;
         statusLabel = 'Quá hạn';

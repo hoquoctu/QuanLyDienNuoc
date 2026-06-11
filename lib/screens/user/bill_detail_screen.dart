@@ -58,6 +58,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         statusLabel = 'Chờ xác nhận';
         statusIcon = Icons.hourglass_top_rounded;
         break;
+      case BillStatus.cancelled:
+        statusColor = AppTheme.textSecondary;
+        statusLabel = 'Đã hủy';
+        statusIcon = Icons.cancel_outlined;
+        break;
       case BillStatus.overdue:
         statusColor = Colors.deepOrange;
         statusLabel = 'Quá hạn';
@@ -194,7 +199,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Image.network(
-                          bill.electric.image!,
+                          bill.electric.image,
                           fit: BoxFit.cover,
                           height: 180,
                           width: double.infinity,
@@ -242,7 +247,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Image.network(
-                          bill.water.image!,
+                          bill.water.image,
                           fit: BoxFit.cover,
                           height: 180,
                           width: double.infinity,

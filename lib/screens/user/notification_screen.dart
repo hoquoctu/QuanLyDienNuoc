@@ -5,13 +5,29 @@ import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user/notification_tile.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
+
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Gọi sau frame đầu để context sẵn sàng
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = context.read<AuthProvider>().currentUser!.uid;
+      context.read<NotificationProvider>().init(userId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final pvd = context.watch<NotificationProvider>();
     final userId = context.read<AuthProvider>().currentUser!.uid;
+
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(

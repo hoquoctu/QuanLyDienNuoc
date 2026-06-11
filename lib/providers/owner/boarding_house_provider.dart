@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:quanlydiennc_app/models/bh_room_model.dart';
-import 'package:quanlydiennc_app/models/boarding_house_model.dart';
 import 'package:quanlydiennc_app/services/manager/boarding_house_service.dart';
-
+import '../../models/boarding_house_model.dart';
+import '../../models/bh_room_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BoardingHouseProvider extends ChangeNotifier {
@@ -141,9 +140,9 @@ class BoardingHouseProvider extends ChangeNotifier {
     required double water,
   }) async {
     await FirebaseFirestore.instance.collection('room').doc(roomId).update({
-      'last_electric': electric,
-      'last_water': water,
-      'updated_at': Timestamp.now(),
+      'last_elec_reading': electric, // ← đúng field name
+      'last_water_reading': water, // ← đúng field name
+      'update_time': Timestamp.now(), // ← dùng update_time cho nhất quán
     });
   }
 

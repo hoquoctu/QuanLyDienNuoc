@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:quanlydiennc_app/models/notification_model.dart';
+import 'package:quanlydiennc_app/services/manager/notification_service.dart';
 import '../../models/bh_room_model.dart';
 import '../../models/boarding_house_model.dart';
 import '../../services/manager/boarding_house_service.dart';
@@ -125,7 +127,6 @@ class BhRoomProviderUser extends ChangeNotifier {
     );
   }
 
-  // ── Join room bằng code ─────────────────────────────────────────────────
   Future<String?> joinRoomByCode(
       String code, String tenantUid, String tenantName) async {
     try {
@@ -141,17 +142,13 @@ class BhRoomProviderUser extends ChangeNotifier {
       final doc = snap.docs.first;
       final roomData = BhRoomModel.fromDoc(doc);
 
-      // Kiểm tra code còn hiệu lực
       if (!roomData.isBhRoomCodeValid) return 'Mã phòng đã hết hạn';
-
-      // Kiểm tra phòng còn trống
       if (roomData.bhRoomStatus != BhRoomStatus.available) {
         return 'Phòng này không còn trống';
       }
 
       final tenantRef = db.doc('users/$tenantUid');
 
-      // Cập nhật phòng: đặt trạng thái pending + gán tenant
       await db.collection('room').doc(doc.id).update({
         'status': db.doc('status/roompending'),
         'tenant_id': tenantRef,
@@ -159,7 +156,18 @@ class BhRoomProviderUser extends ChangeNotifier {
         'update_time': Timestamp.fromDate(DateTime.now()),
       });
 
-      return null; // thành công
+      // lấy ownerId từ room doc
+      final ownerId = (doc.data()['id_owner'] as DocumentReference?)?.id;
+      if (ownerId != null) {
+        await NotificationService.instance.createNotification(
+          receiverId: ownerId,
+          senderId: tenantUid,
+          type: NotificationType.room,
+          content: '$tenantName muốn thuê phòng ${roomData.bhRoomNumber}',
+        );
+      }
+
+      return null;
     } catch (e) {
       return 'Lỗi khi tham gia phòng: $e';
     }

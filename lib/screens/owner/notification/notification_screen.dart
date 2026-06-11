@@ -8,168 +8,189 @@ import 'package:quanlydiennc_app/providers/auth_provider.dart';
 import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 import 'package:quanlydiennc_app/theme/app_theme.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
+
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  NotificationType? _filter; // null = tất cả
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = context.read<AuthProvider>().currentUser!.uid;
+      context.read<NotificationProvider>().init(userId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final userId = context.read<AuthProvider>().currentUser!.uid;
-    final notiPvd = context.read<NotificationProvider>();
+    final notiPvd = context.watch<NotificationProvider>();
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
         title: const Text('Thông báo'),
         actions: [
-          TextButton(
-            onPressed: () => notiPvd.markAllAsRead(userId),
-            child: const Text(
-              'Đọc tất cả',
-              style: TextStyle(color: AppTheme.primary, fontSize: 13),
+          if (notiPvd.hasUnread)
+            TextButton(
+              onPressed: () => notiPvd.markAllAsRead(userId),
+              child: const Text(
+                'Đọc tất cả',
+                style: TextStyle(color: AppTheme.primary, fontSize: 13),
+              ),
             ),
-          ),
         ],
       ),
-      body: StreamBuilder<List<NotificationModel>>(
-        stream: notiPvd.streamNotifications(userId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final all = snapshot.data ?? [];
-
-          if (all.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.notifications_none_outlined,
-                      size: 48, color: AppTheme.textHint),
-                  SizedBox(height: 8),
-                  Text('Chưa có thông báo',
-                      style: TextStyle(color: AppTheme.textSecondary)),
-                ],
-              ),
-            );
-          }
-
-          // Nhóm theo type
-          final payment =
-              all.where((e) => e.type == NotificationType.payment).toList();
-          final system =
-              all.where((e) => e.type == NotificationType.system).toList();
-          final room =
-              all.where((e) => e.type == NotificationType.room).toList();
-
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              if (payment.isNotEmpty) ...[
-                _GroupHeader(
-                  icon: Icons.payments_outlined,
-                  label: 'Thanh toán',
-                  color: AppTheme.primary,
-                ),
-                const SizedBox(height: 8),
-                ...payment.map((n) => _NotifCard(
-                      notif: n,
-                      userId: userId,
-                      onDelete: () => notiPvd.deleteNotification(n.notifId),
-                      onTap: () => notiPvd.markAsRead(
-                        userId: userId,
-                        notificationId: n.notifId,
-                      ),
-                    )),
-                const SizedBox(height: 16),
-              ],
-              if (room.isNotEmpty) ...[
-                _GroupHeader(
-                  icon: Icons.meeting_room_outlined,
-                  label: 'Phòng trọ',
-                  color: Colors.orange,
-                ),
-                const SizedBox(height: 8),
-                ...room.map((n) => _NotifCard(
-                      notif: n,
-                      userId: userId,
-                      onDelete: () => notiPvd.deleteNotification(n.notifId),
-                      onTap: () => notiPvd.markAsRead(
-                        userId: userId,
-                        notificationId: n.notifId,
-                      ),
-                    )),
-                const SizedBox(height: 16),
-              ],
-              if (system.isNotEmpty) ...[
-                _GroupHeader(
-                  icon: Icons.info_outline,
-                  label: 'Hệ thống',
-                  color: AppTheme.textSecondary,
-                ),
-                const SizedBox(height: 8),
-                ...system.map((n) => _NotifCard(
-                      notif: n,
-                      userId: userId,
-                      onDelete: () => notiPvd.deleteNotification(n.notifId),
-                      onTap: () => notiPvd.markAsRead(
-                        userId: userId,
-                        notificationId: n.notifId,
-                      ),
-                    )),
-              ],
-            ],
-          );
-        },
-      ),
+      body: _buildBody(notiPvd, userId),
     );
   }
-}
 
-class _GroupHeader extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
+  Widget _buildBody(NotificationProvider notiPvd, String userId) {
+    if (notiPvd.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-  const _GroupHeader({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
+    if (notiPvd.error != null) {
+      return Center(child: Text(notiPvd.error!));
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+    // lọc theo filter
+    final filtered = _filter == null
+        ? notiPvd.items
+        : notiPvd.items.where((e) => e.notification.type == _filter).toList();
+
+    return Column(
       children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
+        // ── Bộ lọc ──────────────────────────────────────────────────────
+        _FilterBar(
+          selected: _filter,
+          onChanged: (type) => setState(() => _filter = type),
         ),
-        const SizedBox(width: 8),
-        Expanded(child: Divider(color: color.withOpacity(0.3))),
+
+        // ── Danh sách ───────────────────────────────────────────────────
+        Expanded(
+          child: filtered.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.notifications_none_outlined,
+                          size: 48, color: AppTheme.textHint),
+                      SizedBox(height: 8),
+                      Text('Chưa có thông báo',
+                          style: TextStyle(color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                )
+              : ListView.separated(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final item = filtered[index];
+                    return _NotifCard(
+                      item: item,
+                      userId: userId,
+                      onDelete: () =>
+                          notiPvd.deleteNotification(item.notification.notifId),
+                      onTap: () => notiPvd.markAsRead(
+                          userId: userId,
+                          notificationId: item.notification.notifId),
+                    );
+                  },
+                ),
+        ),
       ],
     );
   }
 }
 
+// ── Filter Bar ────────────────────────────────────────────────────────────────
+class _FilterBar extends StatelessWidget {
+  final NotificationType? selected;
+  final ValueChanged<NotificationType?> onChanged;
+
+  const _FilterBar({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final filters = [
+      (null, 'Tất cả', Icons.notifications_none_outlined),
+      (NotificationType.payment, 'Thanh toán', Icons.payments_outlined),
+      (NotificationType.room, 'Phòng trọ', Icons.meeting_room_outlined),
+      (NotificationType.system, 'Hệ thống', Icons.info_outline),
+    ];
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: filters.map((f) {
+            final isActive = selected == f.$1;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => onChanged(f.$1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppTheme.primary
+                        : AppTheme.primary.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        f.$3,
+                        size: 14,
+                        color: isActive ? Colors.white : AppTheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        f.$2,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isActive ? Colors.white : AppTheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
 class _NotifCard extends StatelessWidget {
-  final NotificationModel notif;
+  final NotificationItem item; // đổi từ NotificationModel
   final String userId;
   final VoidCallback onDelete;
   final VoidCallback onTap;
 
   const _NotifCard({
-    required this.notif,
+    required this.item,
     required this.userId,
     required this.onDelete,
     required this.onTap,
   });
+
+  NotificationModel get notif => item.notification;
 
   IconData get _icon {
     switch (notif.type) {
@@ -214,8 +235,13 @@ class _NotifCard extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            // highlight nếu chưa đọc
+            color:
+                item.isRead ? Colors.white : AppTheme.primary.withOpacity(0.05),
             borderRadius: BorderRadius.circular(14),
+            border: item.isRead
+                ? null
+                : Border.all(color: AppTheme.primary.withOpacity(0.2)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),
@@ -227,7 +253,6 @@ class _NotifCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -237,17 +262,17 @@ class _NotifCard extends StatelessWidget {
                 child: Icon(_icon, size: 18, color: _color),
               ),
               const SizedBox(width: 12),
-
-              // Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       notif.content,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        // bold nếu chưa đọc
+                        fontWeight:
+                            item.isRead ? FontWeight.w500 : FontWeight.w700,
                         color: AppTheme.textPrimary,
                       ),
                     ),
@@ -255,13 +280,21 @@ class _NotifCard extends StatelessWidget {
                     Text(
                       DateFormat('HH:mm - dd/MM/yyyy').format(notif.createdAt),
                       style: const TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textHint,
-                      ),
+                          fontSize: 11, color: AppTheme.textHint),
                     ),
                   ],
                 ),
               ),
+              // dot chưa đọc
+              if (!item.isRead)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
             ],
           ),
         ),

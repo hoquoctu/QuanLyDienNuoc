@@ -16,20 +16,23 @@ class NotificationProvider extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
   bool get hasUnread => _items.any((i) => !i.isRead);
-
   void init(String userId) {
     _loading = true;
     notifyListeners();
 
+    print('>>> init called with userId: $userId'); // thêm
+
     _sub?.cancel();
     _sub = _service.streamNotificationsWithRead(userId).listen(
       (items) {
+        print('>>> stream got ${items.length} items'); // thêm
         _items = items;
         _loading = false;
         _error = null;
         notifyListeners();
       },
       onError: (e) {
+        print('>>> stream error: $e'); // thêm
         _error = e.toString();
         _loading = false;
         notifyListeners();

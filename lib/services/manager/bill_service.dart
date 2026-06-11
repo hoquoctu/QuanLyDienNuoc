@@ -11,7 +11,6 @@ class BillService {
   static final _db = FirebaseFirestore.instance;
 
   // ───────────────── CREATE BILL ─────────────────
-
   static Future<String?> createBill({
     required String ownerId,
     required String roomId,
@@ -25,39 +24,39 @@ class BillService {
     required double waterPrice,
     required String waterImage,
     required String roomNumber,
+    String? month, // optional, fallback về tháng hiện tại
   }) async {
     try {
-      // check bill tháng hiện tại
       final now = DateTime.now();
-
-      final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      // Dùng tên khác để tránh trùng với param
+      final billMonth =
+          month ?? '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
       final roomRef = _db.doc('room/$roomId');
 
       final existBill = await _db
           .collection('bills')
           .where('id_room', isEqualTo: roomRef)
-          .where('month', isEqualTo: month)
-          .limit(1)
+          .where('month', isEqualTo: billMonth)
           .get();
 
-      if (existBill.docs.isNotEmpty) {
+      final activeBill = existBill.docs.where((doc) {
+        final status = doc.data()['status'] as DocumentReference;
+        return status.id != 'cancelled';
+      });
+
+      if (activeBill.isNotEmpty) {
         return 'Phòng đã có hóa đơn tháng này';
       }
 
-      // status unpaid
       final unpaidStatus = _db.doc('status/unpaid');
 
-      // tính điện nước
       final electricUsed = newElectric - oldElectric;
       final waterUsed = newWater - oldWater;
-
       final electricTotal = electricUsed * electricPrice;
       final waterTotal = waterUsed * waterPrice;
-
       final total = electricTotal + waterTotal;
 
-      // tạo doc trước để lấy id
       final billRef = _db.collection('bills').doc();
 
       final bill = BillModel(
@@ -65,7 +64,7 @@ class BillService {
         idOwner: _db.doc('users/$ownerId'),
         idRoom: roomRef,
         idTenant: _db.doc('users/$tenantId'),
-        month: month,
+        month: billMonth, // ← dùng billMonth
         roomNumberName: roomNumber,
         nameTenant: await _db
             .collection('users')
@@ -94,17 +93,14 @@ class BillService {
         updatedAt: Timestamp.now(),
       );
 
-// create bill
-      await billRef.set(
-        bill.toMap(),
-      );
-      // notification cho tenant
+      await billRef.set(bill.toMap());
+
       await NotificationService.instance.createNotification(
         receiverId: tenantId,
         senderId: ownerId,
         type: NotificationType.payment,
         content:
-            'Hóa đơn tháng $month phòng $roomNumber: ${total.toStringAsFixed(0)}đ',
+            'Hóa đơn tháng $billMonth phòng $roomNumber: ${total.toStringAsFixed(0)}đ', // ← billMonth
       );
 
       return null;
@@ -112,7 +108,6 @@ class BillService {
       return 'Tạo hóa đơn thất bại: $e';
     }
   }
-
   // ───────────────── USER REPORT PAID ─────────────────
 
   static Future<String?> userConfirmPaid({
@@ -250,36 +245,59 @@ class BillService {
     required String billId,
     required String ownerId,
     required String tenantId,
-    required String method, // "cash" | "transfer"
-    String transferImage = '', // URL ảnh chuyển khoản
+    required String method,
+    String transferImage = '',
+    String tenantName = '',
+    String roomNumber = '',
   }) async {
     try {
-      final batch = _db.batch();
-
-      // 1. Tạo payment document
-      final paymentRef = _db.collection('payments').doc();
-      batch.set(paymentRef, {
-        'id_bill': _db.doc('bills/$billId'),
-        'id_owner': _db.doc('users/$ownerId'),
-        'id_tenant': _db.doc('users/$tenantId'),
-        'method': method,
-        'transferImage': transferImage,
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
-      // 2. Cập nhật bill status → pending + lưu method & ảnh chuyển khoản
-      final billRef = _db.collection('bills').doc(billId);
-      batch.update(billRef, {
+      // cập nhật bill status → pending + lưu method & ảnh
+      await _db.collection('bills').doc(billId).update({
         'status': _db.doc('status/pending'),
         'method': method,
-        'transfe_image': transferImage,
+        'transfer_image': transferImage,
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      await batch.commit();
-      return null; // success
+      // gửi notification cho owner
+      await NotificationService.instance.createNotification(
+        receiverId: ownerId,
+        senderId: tenantId,
+        type: NotificationType.payment,
+        content: '$tenantName báo đã thanh toán phòng $roomNumber',
+      );
+
+      return null;
     } catch (e) {
       return 'Thanh toán thất bại: $e';
+    }
+  }
+
+// ───────────────── CANCEL BILL ─────────────────
+  static Future<String?> cancelBill({
+    required BillModel bill,
+    required String ownerId,
+    required String ownerName,
+  }) async {
+    try {
+      // 1. Đổi bill status → cancelled
+      await _db.collection('bills').doc(bill.id).update({
+        'status': _db.doc('status/cancelled'),
+        'updated_at': Timestamp.now(),
+      });
+
+      // 2. Notification cho tenant
+      await NotificationService.instance.createNotification(
+        receiverId: bill.idTenant.id,
+        senderId: ownerId,
+        type: NotificationType.payment,
+        content:
+            '$ownerName đã hủy hóa đơn tháng ${bill.month} phòng ${bill.roomNumberName}',
+      );
+
+      return null;
+    } catch (e) {
+      return 'Hủy hóa đơn thất bại: $e';
     }
   }
 

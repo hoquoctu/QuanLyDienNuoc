@@ -55,6 +55,7 @@ class BillProvider extends ChangeNotifier {
     required double newWater,
     required double waterPrice,
     required String waterImage,
+    String? month, // ← thêm dòng này
   }) async {
     try {
       _isLoading = true;
@@ -73,6 +74,7 @@ class BillProvider extends ChangeNotifier {
         newWater: newWater,
         waterPrice: waterPrice,
         waterImage: waterImage,
+        month: month,
       );
 
       return result;
@@ -114,6 +116,30 @@ class BillProvider extends ChangeNotifier {
     }
   }
 
+// ───────────────── CANCEL BILL ─────────────────
+  Future<String?> cancelBill({
+    required BillModel bill,
+    required String ownerId,
+    required String ownerName,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final result = await BillService.cancelBill(
+        bill: bill,
+        ownerId: ownerId,
+        ownerName: ownerName,
+      );
+
+      return result;
+    } catch (e) {
+      return e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
   // ───────────────── OWNER CONFIRM PAID ─────────────────
 
   Future<String?> ownerConfirm({

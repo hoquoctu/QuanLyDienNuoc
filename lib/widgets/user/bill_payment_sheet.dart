@@ -71,6 +71,8 @@ Future<void> showBillPaymentSheet(BuildContext context, BillModel bill) {
             tenantId: bill.idTenant.id,
             method: selectedMethod,
             transferImage: transferImageUrl,
+            tenantName: bill.nameTenant,
+            roomNumber: bill.roomNumberName,
           );
 
           if (!ctx.mounted) return;

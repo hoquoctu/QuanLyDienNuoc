@@ -1,12 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum BillStatus {
-  unpaid, // /status/unpaid
-  paid, // /status/paid
-  overdue, // /status/overdue (nếu có)
-  pending // /status/pending
-}
-
 /// Model dãy trọ — map đúng collection `boardingHouse` trên Firestore
 /// Field owner_id dùng reference path /users/{uid}
 class BoardingHouseModel {

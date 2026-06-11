@@ -21,7 +21,8 @@ class BillProviderUser extends ChangeNotifier {
 
   List<BillModel> get paidBills =>
       _bills.where((b) => b.billStatus == BillStatus.paid).toList();
-
+  List<BillModel> get cancelledBills =>
+      _bills.where((b) => b.billStatus == BillStatus.cancelled).toList();
   List<BillModel> get activeBills => _bills
       .where((b) =>
           b.billStatus == BillStatus.unpaid ||

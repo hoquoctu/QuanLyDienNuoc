@@ -12,8 +12,7 @@ class RoomProvider extends ChangeNotifier {
   List<RoomModel> roomsInBlock(String blockId) =>
       _rooms.where((r) => r.blockId == blockId).toList();
 
-  RoomModel? getById(String id) =>
-      _rooms.where((r) => r.id == id).firstOrNull;
+  RoomModel? getById(String id) => _rooms.where((r) => r.id == id).firstOrNull;
 
   /// Returns room tenant is linked to
   RoomModel? roomForTenant(String tenantId) =>
@@ -63,7 +62,8 @@ class RoomProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addRooms(String blockId, String prefix, int start, int end) async {
+  Future<void> addRooms(
+      String blockId, String prefix, int start, int end) async {
     for (int i = start; i <= end; i++) {
       final name = '$prefix${i.toString().padLeft(2, '0')}';
       _rooms.add(RoomModel(
@@ -153,7 +153,8 @@ class RoomProvider extends ChangeNotifier {
   Future<String?> deleteRoomPermanent(String roomId) async {
     final idx = _rooms.indexWhere((r) => r.id == roomId);
     if (idx == -1) return 'Không tìm thấy phòng';
-    if (_rooms[idx].everRented) return 'Phòng đã từng có người thuê, không thể xóa vĩnh viễn';
+    if (_rooms[idx].everRented)
+      return 'Phòng đã từng có người thuê, không thể xóa vĩnh viễn';
     _rooms.removeAt(idx);
     await _save();
     notifyListeners();

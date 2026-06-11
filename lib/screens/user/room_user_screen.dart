@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/models/unlink_request_model.dart';
 import 'package:quanlydiennc_app/providers/user/bh_room_provider.dart';
+import 'package:quanlydiennc_app/services/manager/unlink_request_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/bh_room_model.dart';
 import '../../models/boarding_house_model.dart';
@@ -89,22 +91,18 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
       setState(() => _err = 'Vui lòng nhập mã phòng');
       return;
     }
-
     final user = context.read<AuthProvider>().currentUser;
     if (user == null) {
       setState(() => _err = 'Phiên đăng nhập đã hết hạn');
       return;
     }
-
     setState(() {
       _err = null;
       _joining = true;
     });
-
     final err = await context
         .read<BhRoomProviderUser>()
         .joinRoomByCode(_codeCtrl.text.trim(), user.uid, user.name);
-
     if (!mounted) return;
     setState(() {
       _joining = false;
@@ -119,6 +117,45 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
         ),
       );
     }
+  }
+
+  // ── Tenant đồng ý rời phòng ───────────────────────────────────────────────
+  Future<void> _handleAcceptUnlink(
+      BhRoomModel room, UnlinkRequestModel req) async {
+    final user = context.read<AuthProvider>().currentUser!;
+    final err = await UnlinkRequestService.instance.acceptUnlink(
+      requestId: req.requestId,
+      roomId: room.bhRoomId,
+      tenantId: user.uid,
+      tenantName: user.name,
+      ownerId: req.ownerId,
+      roomNumber: room.bhRoomNumber,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(err ?? 'Đã đồng ý rời phòng ${room.bhRoomNumber}'),
+      backgroundColor:
+          err != null ? AppTheme.errorColor : AppTheme.successColor,
+    ));
+  }
+
+  // ── Tenant từ chối rời phòng ─────────────────────────────────────────────
+  Future<void> _handleRejectUnlink(
+      BhRoomModel room, UnlinkRequestModel req) async {
+    final user = context.read<AuthProvider>().currentUser!;
+    final err = await UnlinkRequestService.instance.rejectUnlink(
+      requestId: req.requestId,
+      tenantId: user.uid,
+      tenantName: user.name,
+      ownerId: req.ownerId,
+      roomNumber: room.bhRoomNumber,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(err ?? 'Đã từ chối yêu cầu'),
+      backgroundColor:
+          err != null ? AppTheme.errorColor : AppTheme.successColor,
+    ));
   }
 
   @override
@@ -137,23 +174,29 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Danh sách phòng ─────────────────────────────────
                       if (provider.rooms.isNotEmpty) ...[
                         _buildRoomCount(provider),
                         const SizedBox(height: 12),
+                        // Wrap từng phòng occupied vào StreamBuilder
                         ...provider.rooms.map((room) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildRoomCard(
-                                room,
-                                provider.boardingHouseFor(room.bhId),
-                              ),
+                              child: room.bhRoomStatus == BhRoomStatus.occupied
+                                  ? _RoomCardWithUnlinkStream(
+                                      room: room,
+                                      bh: provider.boardingHouseFor(room.bhId),
+                                      onAccept: _handleAcceptUnlink,
+                                      onReject: _handleRejectUnlink,
+                                    )
+                                  : _buildRoomCard(
+                                      room,
+                                      provider.boardingHouseFor(room.bhId),
+                                      null,
+                                    ),
                             )),
                         const SizedBox(height: 8),
                         const Divider(),
                         const SizedBox(height: 8),
                       ],
-
-                      // ── Form nhập mã phòng mới ─────────────────────────
                       _buildJoinSection(provider.rooms.isEmpty),
                     ],
                   ),
@@ -161,7 +204,6 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     );
   }
 
-  // ── Số lượng phòng ────────────────────────────────────────────────────────
   Widget _buildRoomCount(BhRoomProviderUser provider) {
     final active = provider.activeRooms.length;
     final waiting = provider.waitingRooms.length;
@@ -179,13 +221,11 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${provider.rooms.length} phòng',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: AppTheme.textPrimary),
-            ),
+            Text('${provider.rooms.length} phòng',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: AppTheme.textPrimary)),
             Text(
               '${active > 0 ? '$active đang thuê' : ''}${active > 0 && waiting > 0 ? ' · ' : ''}${waiting > 0 ? '$waiting chờ xác nhận' : ''}',
               style:
@@ -197,8 +237,12 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     );
   }
 
-  // ── Card phòng ────────────────────────────────────────────────────────────
-  Widget _buildRoomCard(BhRoomModel room, BoardingHouseModel? bh) {
+  // ── Card phòng (nhận thêm pendingRequest) ────────────────────────────────
+  Widget _buildRoomCard(
+    BhRoomModel room,
+    BoardingHouseModel? bh,
+    UnlinkRequestModel? pendingRequest,
+  ) {
     final isWaiting = room.bhRoomStatus == BhRoomStatus.waiting;
     final statusColor =
         isWaiting ? const Color(0xFFF59E0B) : AppTheme.successColor;
@@ -212,9 +256,12 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: isWaiting
-            ? Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3))
-            : null,
+        border: pendingRequest != null
+            ? Border.all(
+                color: AppTheme.errorColor.withOpacity(0.4), width: 1.5)
+            : isWaiting
+                ? Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3))
+                : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -226,7 +273,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: số phòng + badge trạng thái
+          // ── Header ────────────────────────────────────────────────────
           Row(
             children: [
               Container(
@@ -244,18 +291,14 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (bh != null)
-                      Text(
-                        bh.bhName,
+                      Text(bh.bhName,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary)),
+                    Text('Phòng ${room.bhRoomNumber}',
                         style: const TextStyle(
-                            fontSize: 12, color: AppTheme.textSecondary),
-                      ),
-                    Text(
-                      'Phòng ${room.bhRoomNumber}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17,
-                          color: AppTheme.textPrimary),
-                    ),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            color: AppTheme.textPrimary)),
                   ],
                 ),
               ),
@@ -282,7 +325,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
             ],
           ),
 
-          // Nếu đang thuê: hiện chỉ số điện nước
+          // ── Đang thuê: chỉ số điện nước ──────────────────────────────
           if (!isWaiting) ...[
             const SizedBox(height: 14),
             const Divider(height: 0),
@@ -316,12 +359,71 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                       size: 14, color: AppTheme.textHint),
                   const SizedBox(width: 4),
                   Expanded(
-                    child: Text(
-                      bh.bhAddress,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppTheme.textHint),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Text(bh.bhAddress,
+                        style: const TextStyle(
+                            fontSize: 11, color: AppTheme.textHint),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+            ],
+
+            // ── Banner + nút unlink nếu có pending request ────────────
+            if (pendingRequest != null) ...[
+              const SizedBox(height: 14),
+              const Divider(height: 0),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.errorColor.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border:
+                      Border.all(color: AppTheme.errorColor.withOpacity(0.25)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.link_off, color: AppTheme.errorColor, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Chủ trọ muốn kết thúc hợp đồng phòng này',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.errorColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () =>
+                          _handleRejectUnlink(room, pendingRequest),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.textSecondary,
+                        side: const BorderSide(color: AppTheme.textSecondary),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      child: const Text('Từ chối'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () =>
+                          _handleAcceptUnlink(room, pendingRequest),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.errorColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      child: const Text('Đồng ý rời'),
                     ),
                   ),
                 ],
@@ -329,7 +431,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
             ],
           ],
 
-          // Nếu chờ xác nhận: hiện thông báo
+          // ── Chờ xác nhận ─────────────────────────────────────────────
           if (isWaiting) ...[
             const SizedBox(height: 10),
             Container(
@@ -361,12 +463,10 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     );
   }
 
-  // ── Form nhập mã phòng ────────────────────────────────────────────────────
   Widget _buildJoinSection(bool noRooms) {
     return Column(
       children: [
         if (noRooms) ...[
-          // Banner chưa có phòng
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
@@ -392,13 +492,11 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                       size: 52, color: AppTheme.primary),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Chưa có phòng trọ',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                      color: AppTheme.textPrimary),
-                ),
+                const Text('Chưa có phòng trọ',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: AppTheme.textPrimary)),
                 const SizedBox(height: 8),
                 const Text(
                   'Nhập mã phòng do chủ trọ cung cấp để tham gia',
@@ -410,7 +508,6 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
           ),
           const SizedBox(height: 24),
         ] else ...[
-          // Tiêu đề "Thêm phòng mới"
           Row(
             children: [
               Container(
@@ -423,19 +520,15 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                     color: AppTheme.successColor, size: 18),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Thêm phòng mới',
-                style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppTheme.textPrimary),
-              ),
+              const Text('Thêm phòng mới',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppTheme.textPrimary)),
             ],
           ),
           const SizedBox(height: 12),
         ],
-
-        // Input + button
         TextField(
           controller: _codeCtrl,
           textCapitalization: TextCapitalization.characters,
@@ -500,6 +593,38 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Widget bọc StreamBuilder cho phòng occupied
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _RoomCardWithUnlinkStream extends StatelessWidget {
+  final BhRoomModel room;
+  final BoardingHouseModel? bh;
+  final Future<void> Function(BhRoomModel, UnlinkRequestModel) onAccept;
+  final Future<void> Function(BhRoomModel, UnlinkRequestModel) onReject;
+
+  const _RoomCardWithUnlinkStream({
+    required this.room,
+    required this.bh,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<UnlinkRequestModel?>(
+      stream: UnlinkRequestService.instance
+          .streamPendingRequestForRoom(room.bhRoomId),
+      builder: (context, snapshot) {
+        final pendingRequest = snapshot.data;
+        // Gọi lại _buildRoomCard từ parent state
+        return (context.findAncestorStateOfType<_RoomUserScreenState>()!)
+            ._buildRoomCard(room, bh, pendingRequest);
+      },
     );
   }
 }

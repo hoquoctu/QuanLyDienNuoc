@@ -4,7 +4,8 @@ enum BillStatus {
   unpaid, // /status/unpaid
   paid, // /status/paid
   overdue, // /status/overdue (nếu có)
-  pending // /status/pending
+  pending, // /status/pending
+  cancelled
 }
 
 class UtilityData {
@@ -94,8 +95,7 @@ class BillModel {
   });
 // Thêm getter này vào BillModel
   BillStatus get billStatus {
-    final path =
-        status.id; // lấy document id: "unpaid", "paid", "pending", "overdue"
+    final path = status.id;
     switch (path) {
       case 'paid':
         return BillStatus.paid;
@@ -103,6 +103,8 @@ class BillModel {
         return BillStatus.pending;
       case 'overdue':
         return BillStatus.overdue;
+      case 'cancelled':
+        return BillStatus.cancelled;
       default:
         return BillStatus.unpaid;
     }
