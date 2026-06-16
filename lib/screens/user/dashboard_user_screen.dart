@@ -21,22 +21,42 @@ class DashboardUserScreen extends StatelessWidget {
     final user = context.read<AuthProvider>().currentUser!;
     final roomPvd = context.watch<BhRoomProviderUser>();
     final billPvd = context.watch<BillProviderUser>();
-
+    final validBills = billPvd.bills
+        .where((b) => b.billStatus != BillStatus.cancelled)
+        .toList();
     final rooms = roomPvd.rooms;
     final activeRooms = roomPvd.activeRooms;
     final active = billPvd.activeBills;
     final fmt = NumberFormat('#,###', 'vi_VN');
-    final chartData = _buildChartData(billPvd.bills);
+    final chartData = _buildChartData(validBills);
 
     // Chỉ số điện nước từ BILL mới nhất (newNumber)
-    final latestBills = billPvd.bills; // đã sort mới nhất trước
 
-    // Lấy chỉ số mới nhất (bill đầu tiên — đã sort desc)
-    final latestElec =
-        latestBills.isNotEmpty ? latestBills.first.electric.newNumber : 0.0;
-    final latestWater =
-        latestBills.isNotEmpty ? latestBills.first.water.newNumber : 0.0;
+// Nếu 1 phòng → lấy chỉ số mới nhất của phòng đó
+// Nếu nhiều phòng → cộng tổng số đã dùng (used) của tháng hiện tại
 
+    double latestElec = 0.0;
+    double latestWater = 0.0;
+
+    if (activeRooms.length <= 1) {
+      // 1 phòng: lấy newNumber của bill mới nhất
+      if (validBills.isNotEmpty) {
+        latestElec = validBills.first.electric.newNumber;
+        latestWater = validBills.first.water.newNumber;
+      }
+    } else {
+      // Nhiều phòng: cộng tổng số đã DÙNG (used) tháng hiện tại
+      // mỗi phòng lấy bill mới nhất của phòng đó
+      for (final room in activeRooms) {
+        final roomBills = validBills
+            .where((b) => b.idRoom.id == room.bhRoomId)
+            .toList(); // đã sort desc
+        if (roomBills.isNotEmpty) {
+          latestElec += roomBills.first.electric.used;
+          latestWater += roomBills.first.water.used;
+        }
+      }
+    }
     final String roomTitle;
     if (roomPvd.loading) {
       roomTitle = 'Đang tải...';
@@ -130,21 +150,32 @@ class DashboardUserScreen extends StatelessWidget {
                   // Chỉ số điện nước từ bill
                   Row(children: [
                     Expanded(
-                        child: StatCard(
-                            icon: Icons.bolt,
-                            iconColor: AppTheme.elecColor,
-                            label: 'Chỉ số điện',
-                            value: '${latestElec.toStringAsFixed(1)} kWh',
-                            trend: _calcTrend(billPvd.bills, isElec: true))),
+                      child: StatCard(
+                        icon: Icons.bolt,
+                        iconColor: AppTheme.elecColor,
+                        label: activeRooms.length > 1
+                            ? 'Điện dùng (tổng)'
+                            : 'Chỉ số điện',
+                        value: activeRooms.length > 1
+                            ? '${latestElec.toStringAsFixed(1)} kWh'
+                            : '${latestElec.toStringAsFixed(1)} kWh',
+                        trend: _calcTrend(validBills, isElec: true),
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
-                        child: StatCard(
-                            icon: Icons.water_drop,
-                            iconColor: AppTheme.waterColor,
-                            label: 'Chỉ số nước',
-                            value: '${latestWater.toStringAsFixed(1)} m³',
-                            trend: _calcTrend(billPvd.bills, isElec: false))),
+                      child: StatCard(
+                        icon: Icons.water_drop,
+                        iconColor: AppTheme.waterColor,
+                        label: activeRooms.length > 1
+                            ? 'Nước dùng (tổng)'
+                            : 'Chỉ số nước',
+                        value: '${latestWater.toStringAsFixed(1)} m³',
+                        trend: _calcTrend(validBills, isElec: false),
+                      ),
+                    ),
                   ]),
+
                   const SizedBox(height: 16),
                 ],
                 // Hóa đơn cần xử lý
@@ -174,9 +205,12 @@ class DashboardUserScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                 ],
                 // Biểu đồ
-                if (billPvd.bills.isNotEmpty) ...[
-                  const Text('Biểu đồ chi phí điện nước',
-                      style: TextStyle(
+                if (validBills.isNotEmpty) ...[
+                  Text(
+                      activeRooms.length > 1
+                          ? 'Biểu đồ chi phí điện nước · Tổng tất cả phòng'
+                          : 'Biểu đồ chi phí điện nước',
+                      style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                           color: AppTheme.textPrimary)),
@@ -185,6 +219,37 @@ class DashboardUserScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   ElecWaterChart(data: chartData),
                   const SizedBox(height: 30),
+
+                  // Biểu đồ riêng từng phòng (chỉ hiện khi user thuê > 1 phòng)
+                  if (activeRooms.length > 1)
+                    ...activeRooms.expand((room) {
+                      final bh = roomPvd.boardingHouseFor(room.bhId);
+                      final roomChartData =
+                          _buildChartData(billPvd.bills, roomId: room.bhRoomId);
+                      return <Widget>[
+                        Row(children: [
+                          Container(
+                            width: 6,
+                            height: 16,
+                            decoration: BoxDecoration(
+                                color: AppTheme.primary,
+                                borderRadius: BorderRadius.circular(3)),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                              '${bh?.bhName ?? 'Dãy trọ'} - Phòng ${room.bhRoomNumber}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  color: AppTheme.textPrimary)),
+                        ]),
+                        const SizedBox(height: 12),
+                        TotalChart(data: roomChartData),
+                        const SizedBox(height: 16),
+                        ElecWaterChart(data: roomChartData),
+                        const SizedBox(height: 30),
+                      ];
+                    }),
                 ] else if (!billPvd.loading && activeRooms.isNotEmpty) ...[
                   _buildNoInvoiceBanner(),
                   const SizedBox(height: 30),
@@ -372,16 +437,24 @@ class DashboardUserScreen extends StatelessWidget {
         ]),
       );
 
-  List<Map<String, double>> _buildChartData(List<BillModel> bills) {
+  List<Map<String, double>> _buildChartData(
+    List<BillModel> bills, {
+    String? roomId,
+  }) {
     final now = DateTime.now();
+    final source = bills.where((b) {
+      if (b.billStatus == BillStatus.cancelled) return false;
+      if (roomId != null && b.idRoom.id != roomId) return false;
+      return true;
+    }).toList();
     return List.generate(5, (i) {
       final m = DateTime(now.year, now.month - (4 - i));
       final monthKey = '${m.year}-${m.month.toString().padLeft(2, '0')}';
-      final matched = bills.where((b) => b.month == monthKey);
+      final matched = source.where((b) => b.month == monthKey);
       return {
         'month': m.month.toDouble(),
         'elec': matched.fold<double>(0, (s, b) => s + b.electric.total),
-        'water': matched.fold<double>(0, (s, b) => s + b.water.total)
+        'water': matched.fold<double>(0, (s, b) => s + b.water.total),
       };
     });
   }
