@@ -280,6 +280,14 @@ class BillService {
     required String ownerName,
   }) async {
     try {
+      await FirebaseFirestore.instance
+          .collection('room')
+          .doc(bill.idRoom.id)
+          .update({
+        'last_elec_reading': bill.electric.oldNumber,
+        'last_water_reading': bill.water.oldNumber,
+        'update_time': Timestamp.now(),
+      });
       // 1. Đổi bill status → cancelled
       await _db.collection('bills').doc(bill.id).update({
         'status': _db.doc('status/cancelled'),
