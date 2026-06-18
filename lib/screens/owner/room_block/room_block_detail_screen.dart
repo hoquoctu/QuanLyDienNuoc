@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
 import '../../../models/boarding_house_model.dart';
+import '../../../providers/owner/boarding_house_provider.dart';
 import '../../../providers/auth_provider.dart'; // import auth để lấy ownerName
 import '../../../theme/app_theme.dart';
 import '../../../widgets/bottom_sheet_confirm.dart';

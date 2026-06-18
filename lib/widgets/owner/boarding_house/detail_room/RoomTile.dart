@@ -193,7 +193,6 @@ class RoomTile extends StatelessWidget {
 
   // ── Navigate sang màn hình detail ────────────────────────────────────────
   void _openDetail(BuildContext context) {
-    // Reset provider để tránh cache roomId cũ
     context.read<RoomReviewProvider>().reset();
 
     Navigator.push(
@@ -204,6 +203,8 @@ class RoomTile extends StatelessWidget {
           child: RoomDetailOwnerScreen(
             room: room,
             bhName: bhName,
+            ownerId: ownerId, // ← thêm dòng này
+            ownerName: ownerName, // ← thêm dòng này
           ),
         ),
       ),

@@ -20,6 +20,14 @@ class BoardingHouseProvider extends ChangeNotifier {
 
   List<BhRoomModel> roomsOf(String bhId) =>
       List.unmodifiable(_roomMap[bhId] ?? []);
+  BhRoomModel? getRoomById(String roomId) {
+    for (final rooms in _roomMap.values) {
+      try {
+        return rooms.firstWhere((r) => r.bhRoomId == roomId);
+      } catch (_) {}
+    }
+    return null;
+  }
 
   StreamSubscription<List<BoardingHouseModel>>? _bhSub;
   final Map<String, StreamSubscription<List<BhRoomModel>>> _roomSubs = {};
