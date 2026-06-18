@@ -3,8 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Model dãy trọ — map đúng collection `boardingHouse` trên Firestore
 /// Field owner_id dùng reference path /users/{uid}
 class BoardingHouseModel {
-  final String bhId;          // Firestore document ID
-  final String ownerId;       // UID của chủ trọ (extracted từ reference)
+  final String bhId; // Firestore document ID
+  final String ownerId; // UID của chủ trọ (extracted từ reference)
   String bhName;
   String bhAddress;
   String bhDescription;

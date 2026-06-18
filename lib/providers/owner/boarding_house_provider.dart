@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:quanlydiennc_app/services/manager/boarding_house_service.dart';
-import '../models/boarding_house_model.dart';
-import '../models/bh_room_model.dart';
+import '../../models/boarding_house_model.dart';
+import '../../models/bh_room_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BoardingHouseProvider extends ChangeNotifier {
   final _svc = BoardingHouseService.instance;
@@ -61,6 +62,11 @@ class BoardingHouseProvider extends ChangeNotifier {
     );
   }
 
+  //xác nhận và từ chối
+  Future<String?> confirmTenant(String roomId) => _svc.confirmTenant(roomId);
+
+  Future<String?> rejectTenant(String roomId) => _svc.rejectTenant(roomId);
+
   // ── CRUD dãy trọ ─────────────────────────────────────────────────────
   Future<String?> addBh({
     required String ownerUid,
@@ -98,8 +104,7 @@ class BoardingHouseProvider extends ChangeNotifier {
   }) =>
       _svc.addRoom(bhId: bhId, roomNumber: roomNumber);
 
-  Future<String?> deleteRoom(String roomId, BhRoomStatus status) async {
-    if (status == BhRoomStatus.occupied) return 'Phòng đang có người thuê!';
+  Future<String?> deleteRoom(String roomId) async {
     return _svc.deleteRoom(roomId);
   }
 
@@ -122,6 +127,23 @@ class BoardingHouseProvider extends ChangeNotifier {
     _roomSubs.clear();
     _roomMap.clear();
     _bhList = [];
+  }
+
+  void clearData() {
+    _disposeStreams(); // đã có sẵn, clear hết stream + data
+    notifyListeners();
+  }
+
+  Future<void> updateLastReading({
+    required String roomId,
+    required double electric,
+    required double water,
+  }) async {
+    await FirebaseFirestore.instance.collection('room').doc(roomId).update({
+      'last_elec_reading': electric, // ← đúng field name
+      'last_water_reading': water, // ← đúng field name
+      'update_time': Timestamp.now(), // ← dùng update_time cho nhất quán
+    });
   }
 
   @override

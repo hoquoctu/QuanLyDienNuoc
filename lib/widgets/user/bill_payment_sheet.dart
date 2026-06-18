@@ -2,9 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../models/bill_model.dart';
-import '../../services/bill_service.dart';
 import '../../services/CloudinaryUpload.dart';
+import '../../services/manager/bill_service.dart';
 import '../../theme/app_theme.dart';
 import 'method_tile.dart';
 
@@ -52,7 +53,7 @@ Future<void> showBillPaymentSheet(BuildContext context, BillModel bill) {
           String transferImageUrl = '';
 
           if (selectedMethod == 'transfer' && transferFile != null) {
-            final url = await uploadToCloudinary(transferFile!,
+            final url = await uploadToCloudinaryOnForlder(transferFile!,
                 folder: 'Room_Zy/payments');
             if (url == null) {
               setSheetState(() {
@@ -64,12 +65,14 @@ Future<void> showBillPaymentSheet(BuildContext context, BillModel bill) {
             transferImageUrl = url;
           }
 
-          final err = await BillService.instance.submitPayment(
+          final err = await BillService().submitPayment(
             billId: bill.id,
-            ownerId: bill.ownerId,
-            tenantId: bill.tenantId,
+            ownerId: bill.idOwner.id,
+            tenantId: bill.idTenant.id,
             method: selectedMethod,
             transferImage: transferImageUrl,
+            tenantName: bill.nameTenant,
+            roomNumber: bill.roomNumberName,
           );
 
           if (!ctx.mounted) return;
@@ -219,7 +222,8 @@ Future<void> showBillPaymentSheet(BuildContext context, BillModel bill) {
                                 Text('Chọn ảnh chuyển khoản',
                                     style: TextStyle(
                                         fontSize: 13,
-                                        color: AppTheme.primary.withOpacity(0.7),
+                                        color:
+                                            AppTheme.primary.withOpacity(0.7),
                                         fontWeight: FontWeight.w600)),
                               ],
                             ),

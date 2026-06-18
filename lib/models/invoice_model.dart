@@ -1,8 +1,8 @@
 enum InvoiceStatus {
-  waitingPayment,   // chờ thanh toán
-  pendingConfirm,   // chờ xác nhận (user đã báo trả)
-  paid,             // đã thanh toán đúng hạn
-  paidLate,         // đã thanh toán trễ
+  pending, // chờ thanh toán
+  pendingConfirm, // chờ xác nhận (user đã báo trả)
+  paid, // đã thanh toán đúng hạn
+  paidLate, // đã thanh toán trễ
 }
 
 enum PaymentMethod { cash, transfer, momo, vnpay }
@@ -50,7 +50,7 @@ class InvoiceModel {
     this.imagePath,
     required this.createdAt,
     required this.dueDate,
-    this.status = InvoiceStatus.waitingPayment,
+    this.status = InvoiceStatus.pending,
     this.paymentMethod,
     this.paidAt,
   });
@@ -102,9 +102,8 @@ class InvoiceModel {
         imagePath: m['imagePath'],
         createdAt: DateTime.parse(m['createdAt']),
         dueDate: DateTime.parse(m['dueDate']),
-        status: InvoiceStatus.values
-            .firstWhere((e) => e.name == m['status'],
-                orElse: () => InvoiceStatus.waitingPayment),
+        status: InvoiceStatus.values.firstWhere((e) => e.name == m['status'],
+            orElse: () => InvoiceStatus.pending),
         paymentMethod: m['paymentMethod'] != null
             ? PaymentMethod.values.firstWhere(
                 (e) => e.name == m['paymentMethod'],

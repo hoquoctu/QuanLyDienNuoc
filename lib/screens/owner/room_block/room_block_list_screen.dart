@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../providers/boarding_house_provider.dart';
+import '../../../providers/owner/boarding_house_provider.dart';
 import '../../../models/boarding_house_model.dart';
 import '../../../models/bh_room_model.dart';
 import '../../../theme/app_theme.dart';
@@ -18,8 +18,7 @@ class RoomBlockListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ownerUid = context.read<AuthProvider>().currentUser!.uid;
     final provider = context.watch<BoardingHouseProvider>();
-    print("=== provider ===");
-    print(provider);
+
     final bhList = provider.bhList;
 
     return Scaffold(
@@ -42,7 +41,9 @@ class RoomBlockListScreen extends StatelessWidget {
               ? BhEmptyState(
                   onAdd: () => _showAddBhSheet(context, ownerUid),
                 )
-              : _BhListView(bhList: bhList, ownerUid: ownerUid),
+              : SingleChildScrollView(
+                  physics: BouncingScrollPhysics(),
+                  child: _BhListView(bhList: bhList, ownerUid: ownerUid)),
     );
   }
 
@@ -71,6 +72,8 @@ class _BhListView extends StatelessWidget {
     final provider = context.watch<BoardingHouseProvider>();
 
     return ListView.separated(
+      physics: NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
       padding: const EdgeInsets.all(16),
       itemCount: bhList.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),

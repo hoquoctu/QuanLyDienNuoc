@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 import '../../models/notification_model.dart';
-import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
 
 class NotificationTile extends StatelessWidget {
   final NotificationItem item;
   final VoidCallback onTap;
 
-  const NotificationTile({required this.item, required this.onTap});
+  const NotificationTile({super.key, required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -78,8 +78,7 @@ class NotificationTile extends StatelessWidget {
                     notif.content,
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight:
-                          isRead ? FontWeight.w500 : FontWeight.w700,
+                      fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
                       color: AppTheme.textPrimary,
                       height: 1.4,
                     ),

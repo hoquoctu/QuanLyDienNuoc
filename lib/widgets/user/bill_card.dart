@@ -6,7 +6,7 @@ import '../../screens/user/bill_detail_screen.dart';
 
 class BillCard extends StatelessWidget {
   final BillModel bill;
-  const BillCard({required this.bill});
+  const BillCard({required this.bill, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +15,7 @@ class BillCard extends StatelessWidget {
     final Color statusColor;
     final String statusLabel;
 
-    switch (bill.status) {
+    switch (bill.billStatus) {
       case BillStatus.paid:
         statusColor = AppTheme.successColor;
         statusLabel = 'Đã thanh toán';
@@ -23,6 +23,10 @@ class BillCard extends StatelessWidget {
       case BillStatus.pending:
         statusColor = const Color(0xFFF59E0B);
         statusLabel = 'Chờ xác nhận';
+        break;
+      case BillStatus.cancelled:
+        statusColor = AppTheme.textSecondary;
+        statusLabel = 'Đã hủy';
         break;
       case BillStatus.overdue:
         statusColor = Colors.deepOrange;
@@ -59,11 +63,12 @@ class BillCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(bill.monthLabel,
+                      Text(bill.month,
                           style: const TextStyle(
                               fontWeight: FontWeight.w700, fontSize: 15)),
                       Text(
-                        DateFormat('dd/MM/yyyy').format(bill.createdAt),
+                        DateFormat('dd/MM/yyyy')
+                            .format(bill.createdAt.toDate()),
                         style: const TextStyle(
                             fontSize: 11, color: AppTheme.textHint),
                       ),
@@ -71,8 +76,8 @@ class BillCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -100,8 +105,7 @@ class BillCard extends StatelessWidget {
                         Text(
                           '${bill.electric.used.toStringAsFixed(0)} kWh · ${fmt.format(bill.electric.total)}đ',
                           style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary),
+                              fontSize: 12, color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -114,8 +118,7 @@ class BillCard extends StatelessWidget {
                         Text(
                           '${bill.water.used.toStringAsFixed(0)} m³ · ${fmt.format(bill.water.total)}đ',
                           style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary),
+                              fontSize: 12, color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -130,8 +133,7 @@ class BillCard extends StatelessWidget {
                           fontSize: 17,
                           color: AppTheme.textPrimary),
                     ),
-                    const Icon(Icons.chevron_right,
-                        color: AppTheme.textHint),
+                    const Icon(Icons.chevron_right, color: AppTheme.textHint),
                   ],
                 ),
               ],

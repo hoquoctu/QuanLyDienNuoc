@@ -7,17 +7,35 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quanlydiennc_app/models/bh_room_model.dart';
-import 'package:quanlydiennc_app/providers/boarding_house_provider.dart';
+import 'package:quanlydiennc_app/models/notification_model.dart';
+import 'package:quanlydiennc_app/providers/auth_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
+import 'package:quanlydiennc_app/services/manager/unlink_request_service.dart';
 import 'package:quanlydiennc_app/theme/app_theme.dart';
 import './InactiveRoomExpanded.dart';
 import './PendingRoomExpanded.dart';
 import './EmptyRoomExpanded.dart';
+import './OccupiedRoomExpanded.dart';
 import '../../../../theme/StatusBadge.dart';
 import '../../../../widgets/bottom_sheet_confirm.dart';
+import '../../../../services/manager/notification_service.dart';
 
 class RoomTile extends StatefulWidget {
   final BhRoomModel room;
-  const RoomTile({required this.room, super.key});
+
+  /// Cần truyền thêm bhName và ownerId để gửi unlink request
+  final String bhName;
+  final String ownerId;
+  final String ownerName;
+
+  const RoomTile({
+    required this.room,
+    required this.bhName,
+    required this.ownerId,
+    required this.ownerName,
+    super.key,
+  });
+
   @override
   State<RoomTile> createState() => _RoomTileState();
 }
@@ -35,7 +53,7 @@ class _RoomTileState extends State<RoomTile> {
 
   void _startTimer() {
     _timer?.cancel();
-    if (widget.room.bhRoomCodeExpiry == null) return; // ← dừng sớm
+    if (widget.room.bhRoomCodeExpiry == null) return;
     _updateRemaining();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) _updateRemaining();
@@ -50,7 +68,6 @@ class _RoomTileState extends State<RoomTile> {
     }
     final diff = expiry.difference(DateTime.now());
     if (diff.isNegative) {
-      // Hết hạn → reset code trên Firestore
       _timer?.cancel();
       setState(() => _remaining = Duration.zero);
       context.read<BoardingHouseProvider>().resetRoomCode(widget.room.bhRoomId);
@@ -68,7 +85,6 @@ class _RoomTileState extends State<RoomTile> {
   @override
   void didUpdateWidget(RoomTile oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Khi Firestore push data mới (có code mới) → restart timer
     if (oldWidget.room.bhRoomCode != widget.room.bhRoomCode) {
       _startTimer();
     }
@@ -95,10 +111,7 @@ class _RoomTileState extends State<RoomTile> {
         children: [
           InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () {
-              // TODO: navigate to RoomDetailScreen khi làm trang đó
-              setState(() => _expanded = !_expanded);
-            },
+            onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Row(
@@ -125,10 +138,8 @@ class _RoomTileState extends State<RoomTile> {
   }
 
   Widget _buildExpandedContent(BuildContext context, BhRoomModel room) {
-    print(room);
     switch (room.bhRoomStatus) {
-      // phòng trống
-      case BhRoomStatus.empty:
+      case BhRoomStatus.available:
         return EmptyRoomExpanded(
           room: room,
           remaining: _remaining,
@@ -141,8 +152,22 @@ class _RoomTileState extends State<RoomTile> {
                   .showSnackBar(SnackBar(content: Text(err)));
             }
           },
+          onDelete: () async {
+            final ok = await showConfirmSheet<bool>(
+              context,
+              title: 'Xóa phòng',
+              subtitle: 'Xóa phòng ${room.bhRoomNumber}?',
+              confirmLabel: 'Xóa',
+              confirmColor: AppTheme.errorColor,
+            );
+            if (ok == true && context.mounted) {
+              await context
+                  .read<BoardingHouseProvider>()
+                  .deleteRoom(room.bhRoomId);
+            }
+          },
         );
-      //phòng đang chờ xác nhận (user đã gửi yêu cầu)
+
       case BhRoomStatus.waiting:
         return PendingRoomExpanded(
           room: room,
@@ -155,7 +180,31 @@ class _RoomTileState extends State<RoomTile> {
               confirmLabel: 'Xác nhận',
             );
             if (ok == true && context.mounted) {
-              // TODO: confirm tenant
+              final provider = context.read<BoardingHouseProvider>();
+              final notifSvc = NotificationService.instance;
+              final ownerUid = context
+                  .read<AuthProvider>()
+                  .currentUser!
+                  .uid; // hoặc lấy từ đâu mày đang dùng
+
+              final err = await provider.confirmTenant(room.bhRoomId);
+              if (err != null && context.mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+                return;
+              }
+
+              // Gửi thông báo cho tenant
+              if (room.bhRoomTenantId != null) {
+                await notifSvc.createNotification(
+                  receiverId: room.bhRoomTenantId!,
+                  senderId: ownerUid,
+                  type:
+                      NotificationType.system, // đổi type phù hợp với enum mày
+                  content:
+                      'Yêu cầu thuê phòng ${room.bhRoomNumber} của bạn đã được chấp nhận!',
+                );
+              }
             }
           },
           onReject: () async {
@@ -167,43 +216,38 @@ class _RoomTileState extends State<RoomTile> {
               confirmColor: AppTheme.errorColor,
             );
             if (ok == true && context.mounted) {
-              // TODO: reject tenant
+              final provider = context.read<BoardingHouseProvider>();
+              final notifSvc = NotificationService.instance;
+              final ownerUid = context.read<AuthProvider>().currentUser!.uid;
+
+              final tenantId =
+                  room.bhRoomTenantId; // lưu trước vì sau reject sẽ null
+              final err = await provider.rejectTenant(room.bhRoomId);
+              if (err != null && context.mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+                return;
+              }
+
+              if (tenantId != null) {
+                await notifSvc.createNotification(
+                  receiverId: tenantId,
+                  senderId: ownerUid,
+                  type: NotificationType.system,
+                  content:
+                      'Yêu cầu thuê phòng ${room.bhRoomNumber} của bạn đã bị từ chối.',
+                );
+              }
             }
           },
         );
-      //phòng đang chờ xác nhận (pending — dự phòng)
-      case BhRoomStatus.pending:
-        return PendingRoomExpanded(
-          room: room,
-          onConfirm: () async {
-            final ok = await showConfirmSheet<bool>(
-              context,
-              title: 'Xác nhận cho thuê',
-              subtitle:
-                  'Xác nhận cho ${room.bhRoomTenantName} vào phòng ${room.bhRoomNumber}?',
-              confirmLabel: 'Xác nhận',
-            );
-            if (ok == true && context.mounted) {
-              // TODO: confirm tenant
-            }
-          },
-          onReject: () async {
-            final ok = await showConfirmSheet<bool>(
-              context,
-              title: 'Từ chối',
-              subtitle: 'Từ chối yêu cầu của ${room.bhRoomTenantName}?',
-              confirmLabel: 'Từ chối',
-              confirmColor: AppTheme.errorColor,
-            );
-            if (ok == true && context.mounted) {
-              // TODO: reject tenant
-            }
-          },
-        );
-      //phòng có
+
       case BhRoomStatus.occupied:
-        return const SizedBox();
-      //phòng xóa
+        return OccupiedRoomExpanded(
+          room: room,
+          onUnlink: () => _handleUnlink(context, room),
+        );
+
       case BhRoomStatus.inactive:
         return InactiveRoomExpanded(
           room: room,
@@ -229,13 +273,48 @@ class _RoomTileState extends State<RoomTile> {
             if (ok == true && context.mounted) {
               await context
                   .read<BoardingHouseProvider>()
-                  .deleteRoom(room.bhRoomId, room.bhRoomStatus);
+                  .deleteRoom(room.bhRoomId);
             }
           },
         );
     }
   }
+
+  // ── Xử lý ngừng liên kết ─────────────────────────────────────────────
+  Future<void> _handleUnlink(BuildContext context, BhRoomModel room) async {
+    final ok = await showConfirmSheet<bool>(
+      context,
+      title: 'Ngừng liên kết',
+      subtitle:
+          'Gửi yêu cầu kết thúc hợp đồng phòng ${room.bhRoomNumber} đến ${room.bhRoomTenantName}?',
+      confirmLabel: 'Gửi yêu cầu',
+      confirmColor: AppTheme.errorColor,
+    );
+
+    if (ok != true || !context.mounted) return;
+
+    final err = await UnlinkRequestService.instance.sendUnlinkRequest(
+      roomId: room.bhRoomId,
+      roomNumber: room.bhRoomNumber,
+      bhName: widget.bhName,
+      ownerId: widget.ownerId,
+      ownerName: widget.ownerName,
+      tenantId: room.bhRoomTenantId!,
+    );
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(err ?? 'Đã gửi yêu cầu đến ${room.bhRoomTenantName}'),
+        backgroundColor:
+            err != null ? AppTheme.errorColor : AppTheme.successColor,
+      ),
+    );
+  }
 }
+
+// ── Sub-widgets ─────────────────────────────────────────────────────────────
 
 class _RoomNumberBox extends StatelessWidget {
   final BhRoomModel room;
@@ -271,10 +350,8 @@ class _RoomNumberBox extends StatelessWidget {
       case BhRoomStatus.occupied:
         return AppTheme.successColor;
       case BhRoomStatus.waiting:
-        return AppTheme.warningColor;
-      case BhRoomStatus.pending:
-        return AppTheme.primary;
-      case BhRoomStatus.empty:
+        return const Color.fromARGB(255, 58, 59, 63);
+      case BhRoomStatus.available:
         return AppTheme.textSecondary;
       case BhRoomStatus.inactive:
         return AppTheme.errorColor;

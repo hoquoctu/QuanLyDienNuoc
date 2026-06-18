@@ -1,16 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/bill_provider.dart';
+import 'package:quanlydiennc_app/providers/user/bill_provider_user.dart';
+import 'package:quanlydiennc_app/providers/auth_provider.dart'; // thêm
 import '../../theme/app_theme.dart';
 import '../../widgets/user/bill_card.dart';
 import '../../widgets/user/section_header.dart';
 
-class BillListUserScreen extends StatelessWidget {
+class BillListUserScreen extends StatefulWidget {
+  // đổi thành StatefulWidget
   const BillListUserScreen({super.key});
 
   @override
+  State<BillListUserScreen> createState() => _BillListUserScreenState();
+}
+
+class _BillListUserScreenState extends State<BillListUserScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Lấy tenantId từ AuthProvider, gọi init stream
+      final uid = context.read<AuthProvider>().currentUser?.uid;
+      if (uid != null) {
+        context.read<BillProviderUser>().initForUser(uid);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final billPvd = context.watch<BillProvider>();
+    final billPvd = context.watch<BillProviderUser>();
+    final cancelled = billPvd.cancelledBills;
 
     if (billPvd.loading) {
       return const Scaffold(
@@ -95,11 +116,22 @@ class BillListUserScreen extends StatelessWidget {
                         child: BillCard(bill: b),
                       )),
                 ],
+                if (cancelled.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  SectionHeader(
+                    icon: Icons.cancel_outlined,
+                    label: 'Đã hủy',
+                    count: cancelled.length,
+                    color: AppTheme.textSecondary,
+                  ),
+                  const SizedBox(height: 8),
+                  ...cancelled.map((b) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: BillCard(bill: b),
+                      )),
+                ],
               ],
             ),
     );
   }
 }
-
-
-

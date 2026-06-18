@@ -1,169 +1,157 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum BillStatus {
-  unpaid,   // /status/unpaid
-  paid,     // /status/paid
-  overdue,  // /status/overdue (nếu có)
-  pending   // /status/pending
+  unpaid, // /status/unpaid
+  paid, // /status/paid
+  overdue, // /status/overdue (nếu có)
+  pending, // /status/pending
+  cancelled
 }
 
-class BillItemModel {
+class UtilityData {
   final double oldNumber;
   final double newNumber;
   final double used;
   final double unitPrice;
   final double total;
-  final String? image;
 
-  const BillItemModel({
+  /// cloudinary image url
+  final String image;
+
+  const UtilityData({
     required this.oldNumber,
     required this.newNumber,
     required this.used,
     required this.unitPrice,
     required this.total,
-    this.image,
+    required this.image,
   });
 
-  factory BillItemModel.fromMap(Map<String, dynamic> m) => BillItemModel(
-        oldNumber: (m['oldNumber'] ?? 0).toDouble(),
-        newNumber: (m['newNumber'] ?? 0).toDouble(),
-        used: (m['used'] ?? 0).toDouble(),
-        unitPrice: (m['unitPrice'] ?? 0).toDouble(),
-        total: (m['total'] ?? 0).toDouble(),
-        image: m['image'],
-      );
+  Map<String, dynamic> toMap() {
+    return {
+      'oldNumber': oldNumber,
+      'newNumber': newNumber,
+      'used': used,
+      'unitPrice': unitPrice,
+      'total': total,
+      'image': image,
+    };
+  }
+
+  factory UtilityData.fromMap(Map<String, dynamic> map) {
+    return UtilityData(
+      oldNumber: (map['oldNumber'] ?? 0).toDouble(),
+      newNumber: (map['newNumber'] ?? 0).toDouble(),
+      used: (map['used'] ?? 0).toDouble(),
+      unitPrice: (map['unitPrice'] ?? 0).toDouble(),
+      total: (map['total'] ?? 0).toDouble(),
+      image: map['image'] ?? '',
+    );
+  }
 }
 
 class BillModel {
   final String id;
-  final String roomId;
-  final String tenantId;
-  final String ownerId;
-  final String month;       // "2026-05"
+
+  final DocumentReference idOwner;
+  final DocumentReference idRoom;
+  final DocumentReference idTenant;
+  final String roomNumberName;
+  final String nameTenant;
+
+  /// yyyy-MM
+  final String month;
+
+  final DocumentReference status;
+
   final double total;
-  final BillStatus status;
-  final BillItemModel electric;
-  final BillItemModel water;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final String? roomNumberName;  // "P1404" etc.
-  
+
+  final UtilityData electric;
+  final UtilityData water;
+
+  // chỉ có khi status = pending
   final String? transfeImage;
   final String? method;
 
+  final Timestamp createdAt;
+  final Timestamp updatedAt;
+
   const BillModel({
     required this.id,
-    required this.roomId,
-    required this.tenantId,
-    required this.ownerId,
+    required this.idOwner,
+    required this.idRoom,
+    required this.idTenant,
+    required this.roomNumberName,
+    required this.nameTenant,
     required this.month,
-    required this.total,
     required this.status,
+    required this.total,
     required this.electric,
     required this.water,
     required this.createdAt,
     required this.updatedAt,
-    this.roomNumberName,
-
     this.transfeImage,
     this.method,
   });
-
-  // Tháng / năm tiện dụng
-  int get monthNum => int.tryParse(month.split('-').last) ?? 0;
-  int get yearNum => int.tryParse(month.split('-').first) ?? 0;
-
-  String get monthLabel => 'Tháng $monthNum/$yearNum';
-
-  factory BillModel.fromDoc(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
-
-    // Parse status từ reference
-    final statusRef = d['status'];
-    String statusKey = 'unpaid';
-    if (statusRef is DocumentReference) {
-      statusKey = statusRef.id;
-    } else if (statusRef is String) {
-      statusKey = statusRef.split('/').last;
-    }
-
-    // Parse references → lấy ID
-    String roomId = '';
-    final roomRef = d['id_room'];
-    if (roomRef is DocumentReference) roomId = roomRef.id;
-
-    String tenantId = '';
-    final tenantRef = d['id_tenant'];
-    if (tenantRef is DocumentReference) tenantId = tenantRef.id;
-
-    String ownerId = '';
-    final ownerRef = d['id_owner'];
-    if (ownerRef is DocumentReference) ownerId = ownerRef.id;
-
-    return BillModel(
-      id: doc.id,
-      roomId: roomId,
-      tenantId: tenantId,
-      ownerId: ownerId,
-      month: d['month'] ?? '',
-      total: (d['total'] ?? 0).toDouble(),
-      status: _statusFromKey(statusKey),
-      electric: BillItemModel.fromMap(
-          (d['electric'] as Map<String, dynamic>?) ?? {}),
-      water: BillItemModel.fromMap(
-          (d['water'] as Map<String, dynamic>?) ?? {}),
-      createdAt: (d['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (d['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      roomNumberName: d['room_number_name'],
-
-      transfeImage: d['transfe_image'],
-      method: d['method'],
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id_room': roomId,
-      'id_tenant': tenantId,
-      'id_owner': ownerId,
-      'month': month,
-      'total': total,
-      'status': status.name,
-      'electric': {
-        'oldNumber': electric.oldNumber,
-        'newNumber': electric.newNumber,
-        'used': electric.used,
-        'unitPrice': electric.unitPrice,
-        'total': electric.total,
-        'image': electric.image,
-      },
-      'water': {
-        'oldNumber': water.oldNumber,
-        'newNumber': water.newNumber,
-        'used': water.used,
-        'unitPrice': water.unitPrice,
-        'total': water.total,
-        'image': water.image,
-      },
-      'created_at': createdAt,
-      'updated_at': updatedAt,
-      'room_number_name': roomNumberName,
-      //--------THem moi-----
-      'transfe_image': transfeImage,
-      'method': method,
-    };
-  }
-
-  static BillStatus _statusFromKey(String key) {
-    switch (key) {
+// Thêm getter này vào BillModel
+  BillStatus get billStatus {
+    final path = status.id;
+    switch (path) {
       case 'paid':
         return BillStatus.paid;
       case 'pending':
         return BillStatus.pending;
       case 'overdue':
         return BillStatus.overdue;
+      case 'cancelled':
+        return BillStatus.cancelled;
       default:
         return BillStatus.unpaid;
     }
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id_owner': idOwner,
+      'id_room': idRoom,
+      'id_tenant': idTenant,
+      'room_number_name': roomNumberName,
+      'name_tenant': nameTenant,
+      'month': month,
+      'status': status,
+      'total': total,
+      'electric': electric.toMap(),
+      'water': water.toMap(),
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+    };
+  }
+
+  factory BillModel.fromDoc(DocumentSnapshot doc) {
+    final map = doc.data() as Map<String, dynamic>;
+
+    return BillModel(
+      id: doc.id,
+      idOwner: map['id_owner'],
+      idRoom: map['id_room'],
+      idTenant: map['id_tenant'],
+      roomNumberName: map['room_number_name'] ?? '',
+      nameTenant: map['name_tenant'] ?? '',
+      month: map['month'] ?? '',
+      status: map['status'],
+      total: (map['total'] ?? 0).toDouble(),
+      electric: UtilityData.fromMap(
+        Map<String, dynamic>.from(map['electric'] ?? {}),
+      ),
+      water: UtilityData.fromMap(
+        Map<String, dynamic>.from(map['water'] ?? {}),
+      ),
+      createdAt: map['created_at'] ?? Timestamp.now(),
+      updatedAt: map['updated_at'] ?? Timestamp.now(),
+
+      // đọc nếu có, không có thì null
+      transfeImage: map['transferImage'],
+      method: map['method'],
+    );
   }
 }

@@ -1,57 +1,67 @@
+// models/payment_model.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PaymentModel {
   final String id;
-  final String billId;
-  final String ownerId;
-  final String tenantId;
-  final String method; // "cash" | "transfer"
-  final String transferImage; // URL ảnh chuyển khoản (rỗng nếu cash)
+  final DocumentReference idBill;
+  final DocumentReference idOwner;
+  final DocumentReference idTenant;
+  final String ownerName; // snapshot tránh null khi xóa user
+  final String tenantName;
+  final String roomNumber;
+  final String method;
+  final String transferImage;
+  final double total;
+  final String month;
   final DateTime createdAt;
 
-  const PaymentModel({
+  PaymentModel({
     required this.id,
-    required this.billId,
-    required this.ownerId,
-    required this.tenantId,
+    required this.idBill,
+    required this.idOwner,
+    required this.idTenant,
+    required this.ownerName,
+    required this.tenantName,
+    required this.roomNumber,
     required this.method,
     required this.transferImage,
+    required this.total,
+    required this.month,
     required this.createdAt,
   });
 
   factory PaymentModel.fromDoc(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
-
-    String billId = '';
-    final billRef = d['id_bill'];
-    if (billRef is DocumentReference) billId = billRef.id;
-
-    String ownerId = '';
-    final ownerRef = d['id_owner'];
-    if (ownerRef is DocumentReference) ownerId = ownerRef.id;
-
-    String tenantId = '';
-    final tenantRef = d['id_tenant'];
-    if (tenantRef is DocumentReference) tenantId = tenantRef.id;
-
     return PaymentModel(
       id: doc.id,
-      billId: billId,
-      ownerId: ownerId,
-      tenantId: tenantId,
-      method: d['method'] ?? 'cash',
+      idBill: d['id_bill'] as DocumentReference,
+      idOwner: d['id_owner'] as DocumentReference,
+      idTenant: d['id_tenant'] as DocumentReference,
+      ownerName: d['owner_name'] ?? '',
+      tenantName: d['tenant_name'] ?? '',
+      roomNumber: d['room_number'] ?? '',
+      method: d['method'] ?? '',
       transferImage: d['transferImage'] ?? '',
+      total: (d['total'] ?? 0).toDouble(),
+      month: d['month'] ?? '',
       createdAt: (d['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
-  /// Tạo map để ghi lên Firestore
-  Map<String, dynamic> toFirestore(FirebaseFirestore db) => {
-        'id_bill': db.doc('bills/$billId'),
-        'id_owner': db.doc('users/$ownerId'),
-        'id_tenant': db.doc('users/$tenantId'),
-        'method': method,
-        'transferImage': transferImage,
-        'created_at': FieldValue.serverTimestamp(),
-      };
+  Map<String, dynamic> toMap() {
+    return {
+      'id_bill': idBill,
+      'id_owner': idOwner,
+      'id_tenant': idTenant,
+      'owner_name': ownerName,
+      'tenant_name': tenantName,
+      'room_number': roomNumber,
+      'method': method,
+      'transferImage': transferImage,
+      'total': total,
+      'month': month,
+      'created_at': FieldValue.serverTimestamp(),
+    };
+  }
 }

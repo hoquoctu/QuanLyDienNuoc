@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:quanlydiennc_app/models/room_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import '../models/room_model.dart';
 
+//room user provider
 class RoomProvider extends ChangeNotifier {
   List<RoomModel> _rooms = [];
   static const _key = 'rooms_data';
@@ -12,8 +13,7 @@ class RoomProvider extends ChangeNotifier {
   List<RoomModel> roomsInBlock(String blockId) =>
       _rooms.where((r) => r.blockId == blockId).toList();
 
-  RoomModel? getById(String id) =>
-      _rooms.where((r) => r.id == id).firstOrNull;
+  RoomModel? getById(String id) => _rooms.where((r) => r.id == id).firstOrNull;
 
   /// Returns room tenant is linked to
   RoomModel? roomForTenant(String tenantId) =>
@@ -25,45 +25,12 @@ class RoomProvider extends ChangeNotifier {
     if (json != null) {
       final list = jsonDecode(json) as List;
       _rooms = list.map((e) => RoomModel.fromMap(e)).toList();
-    } else {
-      // seed demo
-      _rooms = [
-        RoomModel(
-          id: 'room001',
-          blockId: 'blk001',
-          name: 'B1-01',
-          status: RoomStatus.rented,
-          tenantId: 'usr001',
-          tenantName: 'Trần Thị Lan',
-          tenantSince: DateTime(2024, 3, 1),
-          everRented: true,
-          lastElecReading: 1240,
-          lastWaterReading: 85,
-        ),
-        RoomModel(
-          id: 'room002',
-          blockId: 'blk001',
-          name: 'B1-02',
-          status: RoomStatus.empty,
-          lastElecReading: 500,
-          lastWaterReading: 30,
-        ),
-        RoomModel(
-          id: 'room003',
-          blockId: 'blk001',
-          name: 'B1-03',
-          status: RoomStatus.inactive,
-          everRented: true,
-          lastElecReading: 800,
-          lastWaterReading: 60,
-        ),
-      ];
-      await _save();
     }
     notifyListeners();
   }
 
-  Future<void> addRooms(String blockId, String prefix, int start, int end) async {
+  Future<void> addRooms(
+      String blockId, String prefix, int start, int end) async {
     for (int i = start; i <= end; i++) {
       final name = '$prefix${i.toString().padLeft(2, '0')}';
       _rooms.add(RoomModel(
@@ -153,7 +120,8 @@ class RoomProvider extends ChangeNotifier {
   Future<String?> deleteRoomPermanent(String roomId) async {
     final idx = _rooms.indexWhere((r) => r.id == roomId);
     if (idx == -1) return 'Không tìm thấy phòng';
-    if (_rooms[idx].everRented) return 'Phòng đã từng có người thuê, không thể xóa vĩnh viễn';
+    if (_rooms[idx].everRented)
+      return 'Phòng đã từng có người thuê, không thể xóa vĩnh viễn';
     _rooms.removeAt(idx);
     await _save();
     notifyListeners();

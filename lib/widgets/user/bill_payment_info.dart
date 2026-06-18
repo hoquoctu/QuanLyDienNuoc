@@ -46,9 +46,8 @@ class BillPaymentInfo extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final isPending = bill.status == BillStatus.pending;
-    final methodLabel =
-        payment!.method == 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
+    final isPending = bill.billStatus == BillStatus.pending;
+    final methodLabel = payment!.method == 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
     final methodIcon =
         payment!.method == 'cash' ? Icons.money : Icons.account_balance;
     final bannerColor =
@@ -57,12 +56,10 @@ class BillPaymentInfo extends StatelessWidget {
         isPending ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7);
     final bannerTextColor =
         isPending ? const Color(0xFF92400E) : const Color(0xFF166534);
-    final bannerText = isPending
-        ? 'Đang chờ chủ trọ xác nhận'
-        : 'Thanh toán đã được xác nhận';
-    final bannerIcon = isPending
-        ? Icons.hourglass_top_rounded
-        : Icons.check_circle_rounded;
+    final bannerText =
+        isPending ? 'Đang chờ chủ trọ xác nhận' : 'Thanh toán đã được xác nhận';
+    final bannerIcon =
+        isPending ? Icons.hourglass_top_rounded : Icons.check_circle_rounded;
 
     return InfoCard(
       title: 'Thông tin thanh toán',
@@ -108,8 +105,8 @@ class BillPaymentInfo extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Phương thức',
-                    style: TextStyle(
-                        fontSize: 11, color: AppTheme.textSecondary)),
+                    style:
+                        TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                 Text(methodLabel,
                     style: const TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 14)),
@@ -120,8 +117,8 @@ class BillPaymentInfo extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const Text('Ngày thanh toán',
-                    style: TextStyle(
-                        fontSize: 11, color: AppTheme.textSecondary)),
+                    style:
+                        TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                 Text(
                   DateFormat('dd/MM/yyyy · HH:mm').format(payment!.createdAt),
                   style: const TextStyle(
@@ -198,8 +195,8 @@ class BillPaymentInfo extends StatelessWidget {
                   errorBuilder: (_, __, ___) => Container(
                     height: 200,
                     color: Colors.grey.shade200,
-                    child: const Center(
-                        child: Icon(Icons.broken_image, size: 48)),
+                    child:
+                        const Center(child: Icon(Icons.broken_image, size: 48)),
                   ),
                 ),
               ),
@@ -215,8 +212,7 @@ class BillPaymentInfo extends StatelessWidget {
                     color: Colors.black54,
                     shape: BoxShape.circle,
                   ),
-                  child:
-                      const Icon(Icons.close, color: Colors.white, size: 20),
+                  child: const Icon(Icons.close, color: Colors.white, size: 20),
                 ),
               ),
             ),

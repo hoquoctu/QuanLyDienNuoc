@@ -1,15 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/notification_provider.dart';
+import 'package:quanlydiennc_app/providers/auth_provider.dart';
+import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user/notification_tile.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
+
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Gọi sau frame đầu để context sẵn sàng
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = context.read<AuthProvider>().currentUser!.uid;
+      context.read<NotificationProvider>().init(userId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final pvd = context.watch<NotificationProvider>();
+    final userId = context.read<AuthProvider>().currentUser!.uid;
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -27,7 +44,7 @@ class NotificationScreen extends StatelessWidget {
         actions: [
           if (pvd.hasUnread)
             TextButton(
-              onPressed: () => pvd.markAllAsRead(),
+              onPressed: () => pvd.markAllAsRead(userId),
               child: const Text(
                 'Đọc tất cả',
                 style: TextStyle(
@@ -39,11 +56,11 @@ class NotificationScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: _buildBody(pvd),
+      body: _buildBody(pvd, userId),
     );
   }
 
-  Widget _buildBody(NotificationProvider pvd) {
+  Widget _buildBody(NotificationProvider pvd, String userId) {
     if (pvd.loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -116,7 +133,8 @@ class NotificationScreen extends StatelessWidget {
           item: item,
           onTap: () {
             if (!item.isRead) {
-              pvd.markAsRead(item);
+              pvd.markAsRead(
+                  userId: userId, notificationId: item.notification.notifId);
             }
           },
         );
@@ -124,5 +142,3 @@ class NotificationScreen extends StatelessWidget {
     );
   }
 }
-
-

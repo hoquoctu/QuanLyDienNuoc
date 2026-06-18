@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/providers/user/invoice_provider_user.dart';
 import '../../models/invoice_model.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/invoice_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user/invoice_card.dart';
 import '../../widgets/user/section_header.dart';
@@ -14,11 +14,11 @@ class InvoiceListUserScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().currentUser!;
     final invoices =
-        context.watch<InvoiceProvider>().invoicesForTenant(user.uid);
+        context.watch<InvoiceProviderUser>().invoicesForTenant(user.uid);
 
     final unpaid = invoices
         .where((i) =>
-            i.status == InvoiceStatus.waitingPayment ||
+            i.status == InvoiceStatus.pending ||
             i.status == InvoiceStatus.pendingConfirm)
         .toList();
     final paid = invoices
@@ -78,5 +78,3 @@ class InvoiceListUserScreen extends StatelessWidget {
     );
   }
 }
-
-

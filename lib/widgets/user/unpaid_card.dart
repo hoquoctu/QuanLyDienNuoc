@@ -13,7 +13,7 @@ class UnpaidCard extends StatelessWidget {
     final Color statusColor;
     final String statusLabel;
     final IconData statusIcon;
-    switch (bill.status) {
+    switch (bill.billStatus) {
       case BillStatus.pending:
         statusColor = const Color(0xFFF59E0B);
         statusLabel = 'Chờ xác nhận';
@@ -44,7 +44,7 @@ class UnpaidCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${bill.roomNumberName ?? ''} · ${bill.monthLabel}',
+                Text('${bill.roomNumberName} · ${bill.month}',
                     style: const TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 14)),
                 Text(statusLabel,

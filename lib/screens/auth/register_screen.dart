@@ -53,7 +53,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Điều hướng theo role sau khi đăng ký thành công
-    final user = auth.currentUser!;
+    final user = auth.currentUser;
+    if (user == null) {
+      setState(() => _err = 'Đăng ký thành công nhưng không thể lấy dữ liệu người dùng.');
+      return;
+    }
+
     final destination = user.role == UserRole.owner
         ? const HomeManagerScreen()
         : const HomeUserScreen();

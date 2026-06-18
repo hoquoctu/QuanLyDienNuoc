@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/bill_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/room_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/room_review_provider.dart';
+import 'package:quanlydiennc_app/providers/user/bh_room_provider.dart';
+import 'package:quanlydiennc_app/providers/user/bill_provider_user.dart';
+import 'package:quanlydiennc_app/providers/user/invoice_provider_user.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
-import 'providers/bh_room_provider.dart';
-import 'providers/bill_provider.dart';
-import 'providers/boarding_house_provider.dart';
-import 'providers/invoice_provider.dart';
-import 'providers/notification_provider.dart';
-import 'providers/room_provider.dart';
-import 'providers/room_block_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/owner/home_manager_screen.dart';
 import 'screens/user/home_user_screen.dart';
@@ -22,13 +23,14 @@ class QuanLyDienNuocApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => BoardingHouseProvider()),
-        ChangeNotifierProvider(create: (_) => BhRoomProvider()),
-        ChangeNotifierProvider(create: (_) => BillProvider()),
-        ChangeNotifierProvider(create: (_) => InvoiceProvider()),
-        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => RoomProvider()),
-        ChangeNotifierProvider(create: (_) => RoomBlockProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => BoardingHouseProvider()),
+        ChangeNotifierProvider(create: (_) => BillProvider()),
+        ChangeNotifierProvider(create: (_) => BhRoomProviderUser()),
+        ChangeNotifierProvider(create: (_) => BillProviderUser()),
+        ChangeNotifierProvider(create: (_) => InvoiceProviderUser()),
+        ChangeNotifierProvider(create: (_) => RoomReviewProvider()),
       ],
       child: MaterialApp(
         title: 'SmartUtility - Quản lý điện nước',
@@ -59,22 +61,33 @@ class _AppRootState extends State<_AppRoot> {
     final auth = context.read<AuthProvider>();
     await auth.init();
 
-    // Init RoomProvider and RoomBlockProvider for all users
-    await context.read<RoomProvider>().init();
-    await context.read<RoomBlockProvider>().init();
+    // Lắng nghe mỗi khi user thay đổi (login/logout)
+    auth.addListener(_onAuthChanged);
 
-    // Sau khi auth xong, khởi tạo provider phù hợp với role
-    final user = auth.currentUser;
-    if (user != null && user.isOwner) {
-      context.read<BoardingHouseProvider>().initForOwner(user.uid);
-    } else if (user != null && !user.isOwner) {
-      // User thường: stream phòng, hóa đơn, và thông báo từ Firebase
-      context.read<BhRoomProvider>().initForUser(user.uid);
-      context.read<BillProvider>().initForUser(user.uid);
-      context.read<NotificationProvider>().initForUser(user.uid);
-    }
+    // Lần đầu
+    _onAuthChanged();
 
     if (mounted) setState(() => _initialized = true);
+  }
+
+  void _onAuthChanged() {
+    final auth = context.read<AuthProvider>();
+    final user = auth.currentUser;
+    final bhProvider = context.read<BoardingHouseProvider>();
+
+    if (user == null) {
+      // Logout → clear hết
+      bhProvider.clearData();
+    } else if (user.isOwner) {
+      // Login owner → init stream
+      bhProvider.initForOwner(user.uid);
+    }
+  }
+
+  @override
+  void dispose() {
+    context.read<AuthProvider>().removeListener(_onAuthChanged);
+    super.dispose();
   }
 
   @override

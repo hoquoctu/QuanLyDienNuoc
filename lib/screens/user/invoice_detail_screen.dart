@@ -2,14 +2,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/providers/user/invoice_provider_user.dart';
 import '../../models/invoice_model.dart';
-import '../../providers/invoice_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/status_badge.dart';
 import '../../widgets/user/detail_section.dart';
 import '../../widgets/user/info_card.dart';
 import '../../widgets/user/info_row.dart';
 import '../../widgets/user/payment_method_picker.dart';
+import '../../theme/StatusBadge.dart';
 
 class InvoiceDetailScreen extends StatelessWidget {
   final InvoiceModel invoice;
@@ -19,12 +19,11 @@ class InvoiceDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final fmt = NumberFormat('#,###', 'vi_VN');
     final dateFmt = DateFormat('dd/MM/yyyy HH:mm');
-    final inv =
-        context.watch<InvoiceProvider>().allInvoices.firstWhere(
-              (i) => i.id == invoice.id,
-              orElse: () => invoice,
-            );
-    final canPay = inv.status == InvoiceStatus.waitingPayment;
+    final inv = context.watch<InvoiceProviderUser>().allInvoices.firstWhere(
+          (i) => i.id == invoice.id,
+          orElse: () => invoice,
+        );
+    final canPay = inv.status == InvoiceStatus.pending;
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -60,18 +59,16 @@ class InvoiceDetailScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Phòng ${inv.roomName}',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 14),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     inv.blockAddress,
-                    style: const TextStyle(
-                        color: Colors.white60, fontSize: 12),
+                    style: const TextStyle(color: Colors.white60, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
-                  StatusBadge.invoice(inv.status),
+                  StatusBadge.payment(inv.status.name),
                 ],
               ),
             ),
@@ -91,10 +88,10 @@ class InvoiceDetailScreen extends StatelessWidget {
                         icon: Icons.schedule,
                         label: 'Hạn thanh toán',
                         value: DateFormat('dd/MM/yyyy').format(inv.dueDate),
-                        valueColor: DateTime.now().isAfter(inv.dueDate) &&
-                                canPay
-                            ? AppTheme.errorColor
-                            : null),
+                        valueColor:
+                            DateTime.now().isAfter(inv.dueDate) && canPay
+                                ? AppTheme.errorColor
+                                : null),
                   ]),
 
                   const SizedBox(height: 12),
@@ -161,8 +158,7 @@ class InvoiceDetailScreen extends StatelessWidget {
                       ],
                     ),
                     child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Tổng cộng',
                             style: TextStyle(
@@ -227,8 +223,7 @@ class InvoiceDetailScreen extends StatelessWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
                                   'Đã thanh toán',
@@ -280,5 +275,3 @@ class InvoiceDetailScreen extends StatelessWidget {
     }
   }
 }
-
-

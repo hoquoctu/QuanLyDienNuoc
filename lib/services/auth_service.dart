@@ -23,7 +23,12 @@ class AuthService {
   Stream<UserModel?> get authStateChanges => _auth.authStateChanges().asyncMap(
         (fbUser) async {
           if (fbUser == null) return null;
-          return _fetchUser(fbUser.uid);
+          try {
+            return await _fetchUser(fbUser.uid);
+          } catch (e) {
+            print("Lỗi khi fetch user trong authStateChanges: $e");
+            return null;
+          }
         },
       );
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/providers/user/invoice_provider_user.dart';
 import '../../models/invoice_model.dart';
-import '../../providers/invoice_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bottom_sheet_confirm.dart';
 
@@ -45,18 +45,15 @@ class _PaymentMethodPickerState extends State<PaymentMethodPicker> {
                       : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: selected
-                        ? AppTheme.primary
-                        : const Color(0xFFE2E8F0),
+                    color:
+                        selected ? AppTheme.primary : const Color(0xFFE2E8F0),
                     width: selected ? 2 : 1,
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(icon,
-                        color: selected
-                            ? AppTheme.primary
-                            : AppTheme.textHint),
+                        color: selected ? AppTheme.primary : AppTheme.textHint),
                     const SizedBox(width: 12),
                     Text(label,
                         style: TextStyle(
@@ -85,7 +82,7 @@ class _PaymentMethodPickerState extends State<PaymentMethodPicker> {
             );
             if (ok == true && context.mounted) {
               await context
-                  .read<InvoiceProvider>()
+                  .read<InvoiceProviderUser>()
                   .reportPayment(widget.invoiceId, _selected);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(

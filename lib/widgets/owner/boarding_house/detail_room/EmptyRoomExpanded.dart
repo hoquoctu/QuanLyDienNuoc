@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:quanlydiennc_app/theme/app_theme.dart';
 import 'package:quanlydiennc_app/models/bh_room_model.dart';
-import 'package:flutter/services.dart';
 
 /// Widget hiển thị phần mở rộng của phòng trống.
 ///
 /// Có 2 trạng thái:
-/// - [room.bhRoomCode] == null → Hiển thị nút "Tạo mã tham gia"
+/// - [room.bhRoomCode] == null → Hiển thị nút "Tạo mã tham gia" + nút "Xóa phòng"
 /// - [room.bhRoomCode] != null → Hiển thị mã phòng + đếm ngược hết hạn
 ///
 /// Params:
 ///   [room]      — Dữ liệu phòng (BhRoomModel)
 ///   [remaining] — Thời gian còn lại trước khi mã hết hạn
-///   [onGenCode] — Callback được gọi khi bấm "Tạo mã tham gia"
-
+///   [onGenCode] — Callback khi bấm "Tạo mã tham gia"
+///   [onDelete]  — Callback khi bấm "Xóa phòng"
 class EmptyRoomExpanded extends StatelessWidget {
   final BhRoomModel room;
   final Duration remaining;
   final VoidCallback onGenCode;
-  const EmptyRoomExpanded(
-      {required this.room, required this.remaining, required this.onGenCode});
+  final VoidCallback onDelete;
+
+  const EmptyRoomExpanded({
+    required this.room,
+    required this.remaining,
+    required this.onGenCode,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,11 +40,13 @@ class EmptyRoomExpanded extends StatelessWidget {
       child: hasCode
           ? Column(
               children: [
-                const Text('Mã tham gia phòng',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textSecondary,
-                        fontSize: 12)),
+                const Text(
+                  'Mã tham gia phòng',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondary,
+                      fontSize: 12),
+                ),
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () {
@@ -95,8 +103,10 @@ class EmptyRoomExpanded extends StatelessWidget {
             )
           : Column(
               children: [
-                const Text('Phòng chưa có người thuê',
-                    style: TextStyle(color: AppTheme.textSecondary)),
+                const Text(
+                  'Phòng chưa có người thuê',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: onGenCode,
@@ -104,6 +114,17 @@ class EmptyRoomExpanded extends StatelessWidget {
                   label: const Text('Tạo mã tham gia'),
                   style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 40)),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  label: const Text('Xóa phòng'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.errorColor,
+                    side: const BorderSide(color: AppTheme.errorColor),
+                    minimumSize: const Size(double.infinity, 40),
+                  ),
                 ),
               ],
             ),

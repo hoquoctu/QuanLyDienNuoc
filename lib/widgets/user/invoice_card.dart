@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/invoice_model.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/status_badge.dart';
 import '../../screens/user/invoice_detail_screen.dart';
+import '../../theme/StatusBadge.dart';
 
 class InvoiceCard extends StatelessWidget {
   final InvoiceModel invoice;
@@ -47,12 +47,11 @@ class InvoiceCard extends StatelessWidget {
                               fontWeight: FontWeight.w700, fontSize: 14)),
                       Text('Phòng ${invoice.roomName}',
                           style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary)),
+                              fontSize: 12, color: AppTheme.textSecondary)),
                     ],
                   ),
                 ),
-                StatusBadge.invoice(invoice.status),
+                StatusBadge.payment(invoice.status.name),
               ],
             ),
             const Divider(height: 16),
@@ -69,8 +68,7 @@ class InvoiceCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text('${fmt.format(invoice.elecTotal)}đ',
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary)),
+                                fontSize: 12, color: AppTheme.textSecondary)),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -81,8 +79,7 @@ class InvoiceCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text('${fmt.format(invoice.waterTotal)}đ',
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary)),
+                                fontSize: 12, color: AppTheme.textSecondary)),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -101,8 +98,7 @@ class InvoiceCard extends StatelessWidget {
                           fontSize: 18,
                           color: AppTheme.textPrimary),
                     ),
-                    const Icon(Icons.chevron_right,
-                        color: AppTheme.textHint),
+                    const Icon(Icons.chevron_right, color: AppTheme.textHint),
                   ],
                 ),
               ],

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/bill_model.dart';
 import '../../models/payment_model.dart';
-import '../../services/bill_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user/bill_payment_info.dart';
 import '../../widgets/user/bill_payment_sheet.dart';
 import '../../widgets/user/detail_row.dart';
 import '../../widgets/user/info_card.dart';
+import '../../services/manager/bill_service.dart';
 
 class BillDetailScreen extends StatefulWidget {
   final BillModel bill;
@@ -29,7 +29,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
   Future<void> _loadPayment() async {
     setState(() => _loadingPayment = true);
-    final payment = await BillService.instance.getPaymentByBill(bill.id);
+    final payment = await BillService().getPaymentByBill(bill.id);
     if (mounted) {
       setState(() {
         _payment = payment;
@@ -47,7 +47,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     final String statusLabel;
     final IconData statusIcon;
 
-    switch (bill.status) {
+    switch (bill.billStatus) {
       case BillStatus.paid:
         statusColor = AppTheme.successColor;
         statusLabel = 'Đã thanh toán';
@@ -57,6 +57,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         statusColor = const Color(0xFFF59E0B);
         statusLabel = 'Chờ xác nhận';
         statusIcon = Icons.hourglass_top_rounded;
+        break;
+      case BillStatus.cancelled:
+        statusColor = AppTheme.textSecondary;
+        statusLabel = 'Đã hủy';
+        statusIcon = Icons.cancel_outlined;
         break;
       case BillStatus.overdue:
         statusColor = Colors.deepOrange;
@@ -70,8 +75,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     }
 
     // Chỉ hiển thị nút thanh toán khi chưa TT (unpaid / overdue)
-    final showPayButton =
-        bill.status == BillStatus.unpaid || bill.status == BillStatus.overdue;
+    final showPayButton = bill.billStatus == BillStatus.unpaid ||
+        bill.billStatus == BillStatus.overdue;
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -79,7 +84,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         slivers: [
           // ── Header gradient ────────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 140,
+            expandedHeight: 180,
             pinned: true,
             backgroundColor: AppTheme.primary,
             flexibleSpace: FlexibleSpaceBar(
@@ -91,12 +96,13 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     end: Alignment.bottomRight,
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(20, 80, 20, 20),
+                padding: const EdgeInsets.fromLTRB(
+                    20, 100, 20, 16), // tăng top padding
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text(bill.monthLabel,
+                    Text(bill.month,
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 4),
@@ -150,7 +156,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                         ),
                         const Spacer(),
                         Text(
-                          DateFormat('dd/MM/yyyy').format(bill.createdAt),
+                          DateFormat('dd/MM/yyyy')
+                              .format(bill.createdAt.toDate()),
                           style: const TextStyle(
                               fontSize: 12, color: AppTheme.textHint),
                         ),
@@ -187,12 +194,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                         bold: true,
                         color: AppTheme.elecColor),
                     // Ảnh công tơ điện
-                    if (bill.electric.image != null) ...[
+                    if (bill.electric.image.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Image.network(
-                          bill.electric.image!,
+                          bill.electric.image,
                           fit: BoxFit.cover,
                           height: 180,
                           width: double.infinity,
@@ -235,12 +242,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                         bold: true,
                         color: AppTheme.waterColor),
                     // Ảnh đồng hồ nước
-                    if (bill.water.image != null) ...[
+                    if (bill.water.image.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Image.network(
-                          bill.water.image!,
+                          bill.water.image,
                           fit: BoxFit.cover,
                           height: 180,
                           width: double.infinity,
@@ -294,7 +301,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () { showBillPaymentSheet(context, bill); },
+                      onPressed: () {
+                        showBillPaymentSheet(context, bill);
+                      },
                       icon: const Icon(Icons.payment, size: 20),
                       label: const Text('Thanh toán ngay',
                           style: TextStyle(
@@ -314,7 +323,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 // ── Thông tin thanh toán ──────────────────────────────────
                 if (_loadingPayment || _payment != null) ...[
                   const SizedBox(height: 4),
-                  BillPaymentInfo(loading: _loadingPayment, payment: _payment, bill: bill),
+                  BillPaymentInfo(
+                      loading: _loadingPayment, payment: _payment, bill: bill),
                 ],
 
                 const SizedBox(height: 32),

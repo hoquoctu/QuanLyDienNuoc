@@ -74,8 +74,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           Text(
             'Hướng dẫn đặt lại mật khẩu đã được gửi về\n${_emailCtrl.text}',
             textAlign: TextAlign.center,
-            style:
-                const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+            style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 40),
           ElevatedButton(
@@ -100,14 +99,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline,
-                  color: AppTheme.primary, size: 20),
+              const Icon(Icons.info_outline, color: AppTheme.primary, size: 20),
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
                   'Nhập email đã đăng ký, hệ thống sẽ gửi link đặt lại mật khẩu về email đó.',
-                  style:
-                      TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                 ),
               ),
             ],

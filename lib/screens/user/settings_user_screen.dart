@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:quanlydiennc_app/providers/user/bh_room_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/bh_room_provider.dart';
 import '../../services/CloudinaryUpload.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bottom_sheet_confirm.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/user/settings_info_row.dart';
+import 'PaymentListScreen.dart';
 
 class SettingsUserScreen extends StatefulWidget {
   const SettingsUserScreen({super.key});
@@ -137,18 +138,20 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
                     CircleAvatar(
                       radius: 52,
                       backgroundColor: AppTheme.primary.withOpacity(0.15),
-                      backgroundImage: user.avatar != null && user.avatar!.startsWith('http')
-                          ? NetworkImage(user.avatar!)
-                          : null,
-                      child: user.avatar != null && user.avatar!.startsWith('http')
-                          ? null
-                          : Text(
-                              user.name.substring(0, 1).toUpperCase(),
-                              style: const TextStyle(
-                                  color: AppTheme.primary,
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.w800),
-                            ),
+                      backgroundImage:
+                          user.avatar != null && user.avatar!.startsWith('http')
+                              ? NetworkImage(user.avatar!)
+                              : null,
+                      child:
+                          user.avatar != null && user.avatar!.startsWith('http')
+                              ? null
+                              : Text(
+                                  user.name.substring(0, 1).toUpperCase(),
+                                  style: const TextStyle(
+                                      color: AppTheme.primary,
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.w800),
+                                ),
                     ),
                     if (_uploadingAvatar)
                       Positioned.fill(
@@ -269,7 +272,22 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
                 onTap: () => _showChangePasswordSheet(context),
               ),
             ),
-
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PaymentListScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Lịch sử thanh toán'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: const BorderSide(color: AppTheme.primary),
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
             const SizedBox(height: 12),
 
             // Logout
@@ -302,7 +320,7 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
                   );
                   if (ok == true && context.mounted) {
                     // Reset dữ liệu phòng trước khi logout
-                    context.read<BhRoomProvider>().reset();
+                    context.read<BhRoomProviderUser>().reset();
                     await context.read<AuthProvider>().logout();
                   }
                 },
@@ -388,5 +406,3 @@ class _SettingsUserScreenState extends State<SettingsUserScreen> {
     );
   }
 }
-
-
