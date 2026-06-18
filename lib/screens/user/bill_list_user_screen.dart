@@ -16,14 +16,16 @@ class BillListUserScreen extends StatefulWidget {
 
 class _BillListUserScreenState extends State<BillListUserScreen> {
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Lấy tenantId từ AuthProvider, gọi init stream
-    final uid = context.read<AuthProvider>().currentUser?.uid;
-    if (uid != null) {
-      context.read<BillProviderUser>().initForUser(uid);
-    }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Lấy tenantId từ AuthProvider, gọi init stream
+      final uid = context.read<AuthProvider>().currentUser?.uid;
+      if (uid != null) {
+        context.read<BillProviderUser>().initForUser(uid);
+      }
+    });
   }
 
   @override

@@ -8,6 +8,11 @@ import '../../models/bh_room_model.dart';
 import '../../models/boarding_house_model.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user/mini_stat.dart';
+import '../owner/room_block/room_review_screen.dart';
+import '../../models/room_review_model.dart';
+import '../../services/room_review_service.dart';
+import '../../widgets/room_review_widgets.dart';
+import '../../widgets/user/room_reviews_list.dart';
 
 class RoomUserScreen extends StatefulWidget {
   const RoomUserScreen({super.key});
@@ -177,22 +182,35 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                       if (provider.rooms.isNotEmpty) ...[
                         _buildRoomCount(provider),
                         const SizedBox(height: 12),
-                        // Wrap từng phòng occupied vào StreamBuilder
-                        ...provider.rooms.map((room) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: room.bhRoomStatus == BhRoomStatus.occupied
-                                  ? _RoomCardWithUnlinkStream(
-                                      room: room,
-                                      bh: provider.boardingHouseFor(room.bhId),
-                                      onAccept: _handleAcceptUnlink,
-                                      onReject: _handleRejectUnlink,
-                                    )
-                                  : _buildRoomCard(
-                                      room,
-                                      provider.boardingHouseFor(room.bhId),
-                                      null,
-                                    ),
-                            )),
+                        // 1. Hiển thị tất cả thẻ phòng ở phía trên
+                        ...provider.rooms.map((room) {
+                          final card = room.bhRoomStatus == BhRoomStatus.occupied
+                              ? _RoomCardWithUnlinkStream(
+                                  room: room,
+                                  bh: provider.boardingHouseFor(room.bhId),
+                                  onAccept: _handleAcceptUnlink,
+                                  onReject: _handleRejectUnlink,
+                                )
+                              : _buildRoomCard(
+                                  room,
+                                  provider.boardingHouseFor(room.bhId),
+                                  null,
+                                );
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: card,
+                          );
+                        }),
+
+                        // 2. Hiển thị tất cả phần Đánh giá ở phía dưới (chung một khu vực)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 16),
+                          child: RoomReviewsList(
+                            rooms: provider.rooms
+                                .where((room) => room.bhRoomStatus == BhRoomStatus.occupied)
+                                .toList(),
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         const Divider(),
                         const SizedBox(height: 8),
@@ -250,7 +268,7 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     final statusIcon =
         isWaiting ? Icons.hourglass_top_rounded : Icons.check_circle;
 
-    return Container(
+    final cardWidget = Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -294,11 +312,50 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                       Text(bh.bhName,
                           style: const TextStyle(
                               fontSize: 12, color: AppTheme.textSecondary)),
-                    Text('Phòng ${room.bhRoomNumber}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 17,
-                            color: AppTheme.textPrimary)),
+                    Row(
+                      children: [
+                        Text('Phòng ${room.bhRoomNumber}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 17,
+                                color: AppTheme.textPrimary)),
+                        if (!isWaiting) ...[
+                          const SizedBox(width: 8),
+                          StreamBuilder<List<RoomReviewModel>>(
+                            stream: RoomReviewService.instance.streamReviews(room.bhRoomId),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              final reviews = snapshot.data!;
+                              final avg = reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 16),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    avg.toStringAsFixed(1),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                  ),
+                                  Text(
+                                    ' (${reviews.length})',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -461,7 +518,26 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
         ],
       ),
     );
+
+    if (isWaiting) return cardWidget;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RoomReviewUserScreen(
+              room: room,
+              bhName: bh?.bhName ?? 'Dãy trọ',
+            ),
+          ),
+        );
+      },
+      child: cardWidget,
+    );
   }
+
+  
 
   Widget _buildJoinSection(bool noRooms) {
     return Column(

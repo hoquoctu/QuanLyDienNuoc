@@ -4,6 +4,7 @@ import 'package:quanlydiennc_app/providers/nofitication_provider.dart';
 import 'package:quanlydiennc_app/providers/owner/bill_provider.dart';
 import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
 import 'package:quanlydiennc_app/providers/owner/room_provider.dart';
+import 'package:quanlydiennc_app/providers/owner/room_review_provider.dart';
 import 'package:quanlydiennc_app/providers/user/bh_room_provider.dart';
 import 'package:quanlydiennc_app/providers/user/bill_provider_user.dart';
 import 'package:quanlydiennc_app/providers/user/invoice_provider_user.dart';
@@ -29,6 +30,7 @@ class QuanLyDienNuocApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BhRoomProviderUser()),
         ChangeNotifierProvider(create: (_) => BillProviderUser()),
         ChangeNotifierProvider(create: (_) => InvoiceProviderUser()),
+        ChangeNotifierProvider(create: (_) => RoomReviewProvider()),
       ],
       child: MaterialApp(
         title: 'SmartUtility - Quản lý điện nước',

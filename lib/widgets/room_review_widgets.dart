@@ -85,12 +85,14 @@ class ReviewCard extends StatelessWidget {
   final RoomReviewModel review;
   final bool isOwner; // true = chủ xem, false = user xem
   final VoidCallback? onEdit; // chỉ user mới edit
+  final String? roomName; // hiển thị tên phòng nếu có
 
   const ReviewCard({
     super.key,
     required this.review,
     this.isOwner = false,
     this.onEdit,
+    this.roomName,
   });
 
   @override
@@ -134,13 +136,35 @@ class ReviewCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      review.tenantName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: AppTheme.textPrimary,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          review.tenantName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        if (roomName != null && roomName!.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              roomName!,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     Row(
                       children: [

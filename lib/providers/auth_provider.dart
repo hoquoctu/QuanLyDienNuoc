@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
@@ -20,6 +21,13 @@ class AuthProvider extends ChangeNotifier {
 
     // Lắng nghe thay đổi auth state (logout, token hết hạn...)
     AuthService.instance.authStateChanges.listen((user) {
+      if (user == null) {
+        final fbUser = FirebaseAuth.instance.currentUser;
+        if (fbUser != null && _currentUser != null && _currentUser!.uid == fbUser.uid) {
+          // Tránh race condition khi đăng ký: document Firestore chưa được tạo kịp
+          return;
+        }
+      }
       _currentUser = user;
       notifyListeners();
     });

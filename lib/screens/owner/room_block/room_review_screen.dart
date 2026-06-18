@@ -147,6 +147,8 @@ class _RoomReviewUserScreenState extends State<RoomReviewUserScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<RoomReviewProvider>();
+    final user = context.read<AuthProvider>().currentUser;
+    final isOwner = user?.isOwner ?? false;
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -174,8 +176,8 @@ class _RoomReviewUserScreenState extends State<RoomReviewUserScreen> {
                       _buildSummaryCard(provider),
                       const SizedBox(height: 16),
 
-                      // ── Form đánh giá (chỉ hiện khi phòng đang occupied) ──
-                      if (widget.room.bhRoomStatus == BhRoomStatus.occupied)
+                      // ── Form đánh giá (chỉ hiện khi phòng đang occupied và không phải chủ trọ) ──
+                      if (widget.room.bhRoomStatus == BhRoomStatus.occupied && !isOwner)
                         _buildReviewSection(provider),
 
                       // ── Danh sách tất cả reviews ──────────────────────────

@@ -15,11 +15,19 @@ class RoomReviewService {
 
   // ── Stream danh sách reviews của phòng (mới nhất trước) ──────────────────
   Stream<List<RoomReviewModel>> streamReviews(String roomId) {
-    return _reviewsRef(roomId)
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => RoomReviewModel.fromDoc(d)).toList());
+    if (roomId.trim().isEmpty) {
+      return Stream.value(<RoomReviewModel>[]);
+    }
+    try {
+      return _reviewsRef(roomId)
+          .orderBy('created_at', descending: true)
+          .snapshots()
+          .map((snap) =>
+              snap.docs.map((d) => RoomReviewModel.fromDoc(d)).toList());
+    } catch (e) {
+      print("Lỗi khởi tạo streamReviews: $e");
+      return Stream.value(<RoomReviewModel>[]);
+    }
   }
 
   // ── Lấy review của tenant trong phòng (nếu có) ───────────────────────────
