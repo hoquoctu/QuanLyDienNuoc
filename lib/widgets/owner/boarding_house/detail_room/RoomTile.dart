@@ -1,383 +1,279 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// ROOM TILE
-// ═══════════════════════════════════════════════════════════════════════════
-
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quanlydiennc_app/models/bh_room_model.dart';
-import 'package:quanlydiennc_app/models/notification_model.dart';
-import 'package:quanlydiennc_app/providers/auth_provider.dart';
-import 'package:quanlydiennc_app/providers/owner/boarding_house_provider.dart';
-import 'package:quanlydiennc_app/services/manager/unlink_request_service.dart';
+import 'package:quanlydiennc_app/providers/owner/room_review_provider.dart';
+import 'package:quanlydiennc_app/services/manager/boarding_house_service.dart';
 import 'package:quanlydiennc_app/theme/app_theme.dart';
-import './InactiveRoomExpanded.dart';
-import './PendingRoomExpanded.dart';
-import './EmptyRoomExpanded.dart';
-import './OccupiedRoomExpanded.dart';
-import '../../../../theme/StatusBadge.dart';
-import '../../../../widgets/bottom_sheet_confirm.dart';
-import '../../../../services/manager/notification_service.dart';
+import 'package:quanlydiennc_app/widgets/bottom_sheet_confirm.dart';
+import 'package:quanlydiennc_app/screens/owner/room_block/room_detail_owner_screen.dart';
 
-class RoomTile extends StatefulWidget {
+/// RoomTile dành cho owner — bấm vào mở màn hình detail riêng
+/// (Tab thông tin + Tab đánh giá)
+class RoomTile extends StatelessWidget {
   final BhRoomModel room;
-
-  /// Cần truyền thêm bhName và ownerId để gửi unlink request
   final String bhName;
   final String ownerId;
   final String ownerName;
 
   const RoomTile({
+    super.key,
     required this.room,
     required this.bhName,
     required this.ownerId,
     required this.ownerName,
-    super.key,
   });
 
   @override
-  State<RoomTile> createState() => _RoomTileState();
-}
-
-class _RoomTileState extends State<RoomTile> {
-  bool _expanded = false;
-  Timer? _timer;
-  Duration _remaining = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTimer();
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-    if (widget.room.bhRoomCodeExpiry == null) return;
-    _updateRemaining();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) _updateRemaining();
-    });
-  }
-
-  void _updateRemaining() {
-    final expiry = widget.room.bhRoomCodeExpiry;
-    if (expiry == null) {
-      _timer?.cancel();
-      return;
-    }
-    final diff = expiry.difference(DateTime.now());
-    if (diff.isNegative) {
-      _timer?.cancel();
-      setState(() => _remaining = Duration.zero);
-      context.read<BoardingHouseProvider>().resetRoomCode(widget.room.bhRoomId);
-      return;
-    }
-    setState(() => _remaining = diff);
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(RoomTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.room.bhRoomCode != widget.room.bhRoomCode) {
-      _startTimer();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final room = widget.room;
+    final isOccupied = room.bhRoomStatus == BhRoomStatus.occupied;
+    final isWaiting = room.bhRoomStatus == BhRoomStatus.waiting;
+    final isAvailable = room.bhRoomStatus == BhRoomStatus.available;
+    final isInactive = room.bhRoomStatus == BhRoomStatus.inactive;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  _RoomNumberBox(room: room),
-                  const SizedBox(width: 12),
-                  Expanded(child: _RoomTileInfo(room: room)),
-                  StatusBadge.bhRoom(room.bhRoomStatus),
-                  const SizedBox(width: 8),
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: AppTheme.textHint,
+    Color statusColor;
+    String statusLabel;
+    IconData statusIcon;
+
+    if (isOccupied) {
+      statusColor = AppTheme.successColor;
+      statusLabel = 'Đang thuê';
+      statusIcon = Icons.check_circle_outline;
+    } else if (isWaiting) {
+      statusColor = const Color(0xFFF59E0B);
+      statusLabel = 'Chờ xác nhận';
+      statusIcon = Icons.hourglass_top_rounded;
+    } else if (isAvailable) {
+      statusColor = AppTheme.primary;
+      statusLabel = 'Trống';
+      statusIcon = Icons.door_front_door_outlined;
+    } else {
+      statusColor = AppTheme.textHint;
+      statusLabel = 'Ngừng HĐ';
+      statusIcon = Icons.block_outlined;
+    }
+
+    return GestureDetector(
+      onTap: () => _openDetail(context),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isInactive ? AppTheme.surface : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: isWaiting
+              ? Border.all(
+                  color: const Color(0xFFF59E0B).withOpacity(0.4), width: 1.5)
+              : null,
+          boxShadow: isInactive
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
+                ],
+        ),
+        child: Row(
+          children: [
+            // ── Icon phòng ───────────────────────────────────────────────
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.home, color: statusColor, size: 22),
+            ),
+            const SizedBox(width: 12),
+
+            // ── Tên phòng + tenant ───────────────────────────────────────
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Phòng ${room.bhRoomNumber}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color:
+                          isInactive ? AppTheme.textHint : AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  if (isOccupied && room.bhRoomTenantName != null)
+                    Text(
+                      room.bhRoomTenantName!,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppTheme.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else if (isWaiting && room.bhRoomTenantName != null)
+                    Text(
+                      '${room.bhRoomTenantName} • Chờ duyệt',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFF59E0B),
+                          fontWeight: FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    Text(
+                      isInactive ? 'Ngừng hoạt động' : 'Phòng trống',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: isInactive
+                              ? AppTheme.textHint
+                              : AppTheme.textSecondary),
+                    ),
                 ],
               ),
             ),
-          ),
-          if (_expanded) _buildExpandedContent(context, room),
-        ],
+
+            // ── Badge trạng thái + actions ───────────────────────────────
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, color: statusColor, size: 12),
+                      const SizedBox(width: 3),
+                      Text(
+                        statusLabel,
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Actions row
+                Row(
+                  children: [
+                    // Nút xác nhận / từ chối khi có người chờ
+                    if (isWaiting) ...[
+                      _SmallActionBtn(
+                        icon: Icons.close,
+                        color: AppTheme.errorColor,
+                        onTap: () => _rejectTenant(context),
+                      ),
+                      const SizedBox(width: 6),
+                      _SmallActionBtn(
+                        icon: Icons.check,
+                        color: AppTheme.successColor,
+                        onTap: () => _confirmTenant(context),
+                      ),
+                    ],
+                    // Chevron luôn hiển thị
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right,
+                        size: 16, color: AppTheme.textHint),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildExpandedContent(BuildContext context, BhRoomModel room) {
-    switch (room.bhRoomStatus) {
-      case BhRoomStatus.available:
-        return EmptyRoomExpanded(
-          room: room,
-          remaining: _remaining,
-          onGenCode: () async {
-            final err = await context
-                .read<BoardingHouseProvider>()
-                .generateRoomCode(room.bhRoomId);
-            if (err != null && context.mounted) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(err)));
-            }
-          },
-          onDelete: () async {
-            final ok = await showConfirmSheet<bool>(
-              context,
-              title: 'Xóa phòng',
-              subtitle: 'Xóa phòng ${room.bhRoomNumber}?',
-              confirmLabel: 'Xóa',
-              confirmColor: AppTheme.errorColor,
-            );
-            if (ok == true && context.mounted) {
-              await context
-                  .read<BoardingHouseProvider>()
-                  .deleteRoom(room.bhRoomId);
-            }
-          },
-        );
+  // ── Navigate sang màn hình detail ────────────────────────────────────────
+  void _openDetail(BuildContext context) {
+    // Reset provider để tránh cache roomId cũ
+    context.read<RoomReviewProvider>().reset();
 
-      case BhRoomStatus.waiting:
-        return PendingRoomExpanded(
-          room: room,
-          onConfirm: () async {
-            final ok = await showConfirmSheet<bool>(
-              context,
-              title: 'Xác nhận cho thuê',
-              subtitle:
-                  'Xác nhận cho ${room.bhRoomTenantName} vào phòng ${room.bhRoomNumber}?',
-              confirmLabel: 'Xác nhận',
-            );
-            if (ok == true && context.mounted) {
-              final provider = context.read<BoardingHouseProvider>();
-              final notifSvc = NotificationService.instance;
-              final ownerUid = context
-                  .read<AuthProvider>()
-                  .currentUser!
-                  .uid; // hoặc lấy từ đâu mày đang dùng
-
-              final err = await provider.confirmTenant(room.bhRoomId);
-              if (err != null && context.mounted) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(err)));
-                return;
-              }
-
-              // Gửi thông báo cho tenant
-              if (room.bhRoomTenantId != null) {
-                await notifSvc.createNotification(
-                  receiverId: room.bhRoomTenantId!,
-                  senderId: ownerUid,
-                  type:
-                      NotificationType.system, // đổi type phù hợp với enum mày
-                  content:
-                      'Yêu cầu thuê phòng ${room.bhRoomNumber} của bạn đã được chấp nhận!',
-                );
-              }
-            }
-          },
-          onReject: () async {
-            final ok = await showConfirmSheet<bool>(
-              context,
-              title: 'Từ chối',
-              subtitle: 'Từ chối yêu cầu của ${room.bhRoomTenantName}?',
-              confirmLabel: 'Từ chối',
-              confirmColor: AppTheme.errorColor,
-            );
-            if (ok == true && context.mounted) {
-              final provider = context.read<BoardingHouseProvider>();
-              final notifSvc = NotificationService.instance;
-              final ownerUid = context.read<AuthProvider>().currentUser!.uid;
-
-              final tenantId =
-                  room.bhRoomTenantId; // lưu trước vì sau reject sẽ null
-              final err = await provider.rejectTenant(room.bhRoomId);
-              if (err != null && context.mounted) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(err)));
-                return;
-              }
-
-              if (tenantId != null) {
-                await notifSvc.createNotification(
-                  receiverId: tenantId,
-                  senderId: ownerUid,
-                  type: NotificationType.system,
-                  content:
-                      'Yêu cầu thuê phòng ${room.bhRoomNumber} của bạn đã bị từ chối.',
-                );
-              }
-            }
-          },
-        );
-
-      case BhRoomStatus.occupied:
-        return OccupiedRoomExpanded(
-          room: room,
-          onUnlink: () => _handleUnlink(context, room),
-        );
-
-      case BhRoomStatus.inactive:
-        return InactiveRoomExpanded(
-          room: room,
-          onReactivate: () async {
-            final ok = await showConfirmSheet<bool>(
-              context,
-              title: 'Mở lại phòng',
-              subtitle: 'Mở lại phòng ${room.bhRoomNumber}?',
-              confirmLabel: 'Mở lại',
-            );
-            if (ok == true && context.mounted) {
-              // TODO: reactivate room
-            }
-          },
-          onDelete: () async {
-            final ok = await showConfirmSheet<bool>(
-              context,
-              title: 'Xóa vĩnh viễn',
-              subtitle: 'Xóa phòng ${room.bhRoomNumber} vĩnh viễn?',
-              confirmLabel: 'Xóa vĩnh viễn',
-              confirmColor: AppTheme.errorColor,
-            );
-            if (ok == true && context.mounted) {
-              await context
-                  .read<BoardingHouseProvider>()
-                  .deleteRoom(room.bhRoomId);
-            }
-          },
-        );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: context.read<RoomReviewProvider>(),
+          child: RoomDetailOwnerScreen(
+            room: room,
+            bhName: bhName,
+          ),
+        ),
+      ),
+    );
   }
 
-  // ── Xử lý ngừng liên kết ─────────────────────────────────────────────
-  Future<void> _handleUnlink(BuildContext context, BhRoomModel room) async {
+  // ── Confirm / Reject tenant ──────────────────────────────────────────────
+  Future<void> _confirmTenant(BuildContext context) async {
     final ok = await showConfirmSheet<bool>(
       context,
-      title: 'Ngừng liên kết',
+      title: 'Xác nhận người thuê',
       subtitle:
-          'Gửi yêu cầu kết thúc hợp đồng phòng ${room.bhRoomNumber} đến ${room.bhRoomTenantName}?',
-      confirmLabel: 'Gửi yêu cầu',
+          'Chấp nhận "${room.bhRoomTenantName}" vào phòng ${room.bhRoomNumber}?',
+      confirmLabel: 'Xác nhận',
+    );
+    if (ok == true && context.mounted) {
+      final err =
+          await BoardingHouseService.instance.confirmTenant(room.bhRoomId);
+      if (err != null && context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(err)));
+      }
+    }
+  }
+
+  Future<void> _rejectTenant(BuildContext context) async {
+    final ok = await showConfirmSheet<bool>(
+      context,
+      title: 'Từ chối người thuê',
+      subtitle:
+          'Từ chối "${room.bhRoomTenantName}" vào phòng ${room.bhRoomNumber}?',
+      confirmLabel: 'Từ chối',
       confirmColor: AppTheme.errorColor,
     );
-
-    if (ok != true || !context.mounted) return;
-
-    final err = await UnlinkRequestService.instance.sendUnlinkRequest(
-      roomId: room.bhRoomId,
-      roomNumber: room.bhRoomNumber,
-      bhName: widget.bhName,
-      ownerId: widget.ownerId,
-      ownerName: widget.ownerName,
-      tenantId: room.bhRoomTenantId!,
-    );
-
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(err ?? 'Đã gửi yêu cầu đến ${room.bhRoomTenantName}'),
-        backgroundColor:
-            err != null ? AppTheme.errorColor : AppTheme.successColor,
-      ),
-    );
-  }
-}
-
-// ── Sub-widgets ─────────────────────────────────────────────────────────────
-
-class _RoomNumberBox extends StatelessWidget {
-  final BhRoomModel room;
-  const _RoomNumberBox({required this.room});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _statusColor(room.bhRoomStatus);
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Center(
-        child: Text(
-          room.bhRoomNumber.length > 4
-              ? room.bhRoomNumber.substring(room.bhRoomNumber.length - 3)
-              : room.bhRoomNumber,
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            color: color,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _statusColor(BhRoomStatus s) {
-    switch (s) {
-      case BhRoomStatus.occupied:
-        return AppTheme.successColor;
-      case BhRoomStatus.waiting:
-        return const Color.fromARGB(255, 58, 59, 63);
-      case BhRoomStatus.available:
-        return AppTheme.textSecondary;
-      case BhRoomStatus.inactive:
-        return AppTheme.errorColor;
+    if (ok == true && context.mounted) {
+      final err =
+          await BoardingHouseService.instance.rejectTenant(room.bhRoomId);
+      if (err != null && context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(err)));
+      }
     }
   }
 }
 
-class _RoomTileInfo extends StatelessWidget {
-  final BhRoomModel room;
-  const _RoomTileInfo({required this.room});
+// ── Small icon button ─────────────────────────────────────────────────────
+class _SmallActionBtn extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SmallActionBtn({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          room.bhRoomNumber,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
         ),
-        if (room.bhRoomTenantName != null)
-          Text(
-            room.bhRoomTenantName!,
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-          ),
-      ],
+        child: Icon(icon, color: color, size: 16),
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quanlydiennc_app/models/unlink_request_model.dart';
+import 'package:quanlydiennc_app/providers/owner/room_review_provider.dart';
 import 'package:quanlydiennc_app/providers/user/bh_room_provider.dart';
 import 'package:quanlydiennc_app/services/manager/unlink_request_service.dart';
 import '../../providers/auth_provider.dart';
@@ -8,6 +9,7 @@ import '../../models/bh_room_model.dart';
 import '../../models/boarding_house_model.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user/mini_stat.dart';
+import 'room_review_user_screen.dart';
 
 class RoomUserScreen extends StatefulWidget {
   const RoomUserScreen({super.key});
@@ -119,7 +121,28 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     }
   }
 
-  // ── Tenant đồng ý rời phòng ───────────────────────────────────────────────
+  // ── Mở màn hình detail phòng (đánh giá + info) ───────────────────────────
+  void _openRoomDetail(BhRoomModel room, BoardingHouseModel? bh) {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    // Reset provider trước khi navigate để tránh cache roomId cũ
+    context.read<RoomReviewProvider>().reset();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: context.read<RoomReviewProvider>(),
+          child: RoomReviewUserScreen(
+            room: room,
+            bhName: bh?.bhName ?? '',
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleAcceptUnlink(
       BhRoomModel room, UnlinkRequestModel req) async {
     final user = context.read<AuthProvider>().currentUser!;
@@ -139,7 +162,6 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     ));
   }
 
-  // ── Tenant từ chối rời phòng ─────────────────────────────────────────────
   Future<void> _handleRejectUnlink(
       BhRoomModel room, UnlinkRequestModel req) async {
     final user = context.read<AuthProvider>().currentUser!;
@@ -177,7 +199,6 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                       if (provider.rooms.isNotEmpty) ...[
                         _buildRoomCount(provider),
                         const SizedBox(height: 12),
-                        // Wrap từng phòng occupied vào StreamBuilder
                         ...provider.rooms.map((room) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: room.bhRoomStatus == BhRoomStatus.occupied
@@ -186,6 +207,8 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
                                       bh: provider.boardingHouseFor(room.bhId),
                                       onAccept: _handleAcceptUnlink,
                                       onReject: _handleRejectUnlink,
+                                      onTap: () => _openRoomDetail(room,
+                                          provider.boardingHouseFor(room.bhId)),
                                     )
                                   : _buildRoomCard(
                                       room,
@@ -237,12 +260,14 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     );
   }
 
-  // ── Card phòng (nhận thêm pendingRequest) ────────────────────────────────
+  // ── Card phòng ────────────────────────────────────────────────────────────
+  // onTap truyền vào từ _RoomCardWithUnlinkStream hoặc null cho waiting room
   Widget _buildRoomCard(
     BhRoomModel room,
     BoardingHouseModel? bh,
-    UnlinkRequestModel? pendingRequest,
-  ) {
+    UnlinkRequestModel? pendingRequest, {
+    VoidCallback? onTap,
+  }) {
     final isWaiting = room.bhRoomStatus == BhRoomStatus.waiting;
     final statusColor =
         isWaiting ? const Color(0xFFF59E0B) : AppTheme.successColor;
@@ -250,215 +275,244 @@ class _RoomUserScreenState extends State<RoomUserScreen> {
     final statusIcon =
         isWaiting ? Icons.hourglass_top_rounded : Icons.check_circle;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: pendingRequest != null
-            ? Border.all(
-                color: AppTheme.errorColor.withOpacity(0.4), width: 1.5)
-            : isWaiting
-                ? Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3))
-                : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header ────────────────────────────────────────────────────
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child:
-                    const Icon(Icons.home, color: AppTheme.primary, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (bh != null)
-                      Text(bh.bhName,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.textSecondary)),
-                    Text('Phòng ${room.bhRoomNumber}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 17,
-                            color: AppTheme.textPrimary)),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(statusIcon, color: statusColor, size: 14),
-                    const SizedBox(width: 4),
-                    Text(statusLabel,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: statusColor)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          // ── Đang thuê: chỉ số điện nước ──────────────────────────────
-          if (!isWaiting) ...[
-            const SizedBox(height: 14),
-            const Divider(height: 0),
-            const SizedBox(height: 14),
+    return GestureDetector(
+      // Chỉ phòng occupied mới bấm được vào xem detail
+      onTap: !isWaiting ? onTap : null,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: pendingRequest != null
+              ? Border.all(
+                  color: AppTheme.errorColor.withOpacity(0.4), width: 1.5)
+              : isWaiting
+                  ? Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3))
+                  : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header ──────────────────────────────────────────────────
             Row(
               children: [
-                Expanded(
-                  child: MiniStat(
-                    icon: Icons.bolt,
-                    iconColor: AppTheme.elecColor,
-                    label: 'Điện',
-                    value: '${room.bhRoomLastElec.toStringAsFixed(1)} kWh',
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  child:
+                      const Icon(Icons.home, color: AppTheme.primary, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: MiniStat(
-                    icon: Icons.water_drop,
-                    iconColor: AppTheme.waterColor,
-                    label: 'Nước',
-                    value: '${room.bhRoomLastWater.toStringAsFixed(1)} m³',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (bh != null)
+                        Text(bh.bhName,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppTheme.textSecondary)),
+                      Text('Phòng ${room.bhRoomNumber}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
+                              color: AppTheme.textPrimary)),
+                    ],
                   ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 14),
+                          const SizedBox(width: 4),
+                          Text(statusLabel,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: statusColor)),
+                        ],
+                      ),
+                    ),
+                    // Arrow hint chỉ hiện với phòng occupied
+                    if (!isWaiting) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.chevron_right,
+                          size: 18, color: AppTheme.textHint),
+                    ],
+                  ],
                 ),
               ],
             ),
-            if (bh != null && bh.bhAddress.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Icon(Icons.location_on,
-                      size: 14, color: AppTheme.textHint),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(bh.bhAddress,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.textHint),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                ],
-              ),
-            ],
 
-            // ── Banner + nút unlink nếu có pending request ────────────
-            if (pendingRequest != null) ...[
+            // ── Đang thuê ────────────────────────────────────────────────
+            if (!isWaiting) ...[
               const SizedBox(height: 14),
               const Divider(height: 0),
               const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: MiniStat(
+                      icon: Icons.bolt,
+                      iconColor: AppTheme.elecColor,
+                      label: 'Điện',
+                      value: '${room.bhRoomLastElec.toStringAsFixed(1)} kWh',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: MiniStat(
+                      icon: Icons.water_drop,
+                      iconColor: AppTheme.waterColor,
+                      label: 'Nước',
+                      value: '${room.bhRoomLastWater.toStringAsFixed(1)} m³',
+                    ),
+                  ),
+                ],
+              ),
+              if (bh != null && bh.bhAddress.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on,
+                        size: 14, color: AppTheme.textHint),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(bh.bhAddress,
+                          style: const TextStyle(
+                              fontSize: 11, color: AppTheme.textHint),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
+              ],
+
+              // Hint bấm xem đánh giá
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.rate_review_outlined,
+                      size: 13, color: AppTheme.textHint),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Bấm để xem chi tiết & đánh giá',
+                    style: TextStyle(fontSize: 11, color: AppTheme.textHint),
+                  ),
+                ],
+              ),
+
+              // ── Banner unlink ──────────────────────────────────────────
+              if (pendingRequest != null) ...[
+                const SizedBox(height: 14),
+                const Divider(height: 0),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.errorColor.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppTheme.errorColor.withOpacity(0.25)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.link_off,
+                          color: AppTheme.errorColor, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Chủ trọ muốn kết thúc hợp đồng phòng này',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.errorColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            _handleRejectUnlink(room, pendingRequest),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.textSecondary,
+                          side: const BorderSide(color: AppTheme.textSecondary),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: const Text('Từ chối'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () =>
+                            _handleAcceptUnlink(room, pendingRequest),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.errorColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: const Text('Đồng ý rời'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+
+            // ── Chờ xác nhận ──────────────────────────────────────────────
+            if (isWaiting) ...[
+              const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.errorColor.withOpacity(0.06),
+                  color: const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(10),
-                  border:
-                      Border.all(color: AppTheme.errorColor.withOpacity(0.25)),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.link_off, color: AppTheme.errorColor, size: 16),
+                    Icon(Icons.mark_email_unread_outlined,
+                        color: Color(0xFFF59E0B), size: 16),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Chủ trọ muốn kết thúc hợp đồng phòng này',
+                        'Đang chờ chủ trọ xét duyệt yêu cầu',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.errorColor),
+                            color: Color(0xFF92400E)),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () =>
-                          _handleRejectUnlink(room, pendingRequest),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.textSecondary,
-                        side: const BorderSide(color: AppTheme.textSecondary),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      child: const Text('Từ chối'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () =>
-                          _handleAcceptUnlink(room, pendingRequest),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.errorColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      child: const Text('Đồng ý rời'),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ],
-
-          // ── Chờ xác nhận ─────────────────────────────────────────────
-          if (isWaiting) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.mark_email_unread_outlined,
-                      color: Color(0xFFF59E0B), size: 16),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Đang chờ chủ trọ xét duyệt yêu cầu',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF92400E)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -606,12 +660,14 @@ class _RoomCardWithUnlinkStream extends StatelessWidget {
   final BoardingHouseModel? bh;
   final Future<void> Function(BhRoomModel, UnlinkRequestModel) onAccept;
   final Future<void> Function(BhRoomModel, UnlinkRequestModel) onReject;
+  final VoidCallback onTap;
 
   const _RoomCardWithUnlinkStream({
     required this.room,
     required this.bh,
     required this.onAccept,
     required this.onReject,
+    required this.onTap,
   });
 
   @override
@@ -621,9 +677,8 @@ class _RoomCardWithUnlinkStream extends StatelessWidget {
           .streamPendingRequestForRoom(room.bhRoomId),
       builder: (context, snapshot) {
         final pendingRequest = snapshot.data;
-        // Gọi lại _buildRoomCard từ parent state
         return (context.findAncestorStateOfType<_RoomUserScreenState>()!)
-            ._buildRoomCard(room, bh, pendingRequest);
+            ._buildRoomCard(room, bh, pendingRequest, onTap: onTap);
       },
     );
   }

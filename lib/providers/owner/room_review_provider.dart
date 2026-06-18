@@ -8,13 +8,11 @@ class RoomReviewProvider extends ChangeNotifier {
   final _service = RoomReviewService.instance;
 
   List<RoomReviewModel> _reviews = [];
-  RoomReviewModel? _myReview; // review của chính tenant đang đăng nhập
+  RoomReviewModel? _myReview;
   bool _loading = false;
   String? _error;
   StreamSubscription? _sub;
-
   String? _currentRoomId;
-  String? _currentTenantId;
 
   List<RoomReviewModel> get reviews => _reviews;
   RoomReviewModel? get myReview => _myReview;
@@ -27,11 +25,11 @@ class RoomReviewProvider extends ChangeNotifier {
         _reviews.length;
   }
 
-  // ── Khởi tạo stream cho 1 phòng ──────────────────────────────────────────
+  // tenantId: truyền uid khi là user side → lọc ra myReview
+  // owner side: truyền null
   void init(String roomId, {String? tenantId}) {
-    if (_currentRoomId == roomId) return; // tránh re-init không cần thiết
+    if (_currentRoomId == roomId) return;
     _currentRoomId = roomId;
-    _currentTenantId = tenantId;
     _sub?.cancel();
     _loading = true;
     _error = null;
@@ -54,7 +52,6 @@ class RoomReviewProvider extends ChangeNotifier {
     );
   }
 
-  // ── Gửi đánh giá mới ─────────────────────────────────────────────────────
   Future<String?> submitReview({
     required String roomId,
     required String tenantId,
@@ -63,7 +60,6 @@ class RoomReviewProvider extends ChangeNotifier {
     required String comment,
     List<File> imageFiles = const [],
   }) async {
-    // Nếu đã có review → update
     if (_myReview != null) {
       return updateReview(
         roomId: roomId,
@@ -85,7 +81,6 @@ class RoomReviewProvider extends ChangeNotifier {
     );
   }
 
-  // ── Cập nhật đánh giá ────────────────────────────────────────────────────
   Future<String?> updateReview({
     required String roomId,
     required String reviewId,
@@ -106,7 +101,6 @@ class RoomReviewProvider extends ChangeNotifier {
     );
   }
 
-  // ── Xóa ảnh khỏi review ──────────────────────────────────────────────────
   Future<String?> removeImage({
     required String roomId,
     required String reviewId,
@@ -121,12 +115,6 @@ class RoomReviewProvider extends ChangeNotifier {
     );
   }
 
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
-  }
-
   void reset() {
     _sub?.cancel();
     _reviews = [];
@@ -134,7 +122,12 @@ class RoomReviewProvider extends ChangeNotifier {
     _loading = false;
     _error = null;
     _currentRoomId = null;
-    _currentTenantId = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }
